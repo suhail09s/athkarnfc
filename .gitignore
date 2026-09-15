@@ -1,0 +1,7 @@
+*.pdf
+assets/audio/*.json
+assets/audio/*.txt
+assets/audio/*.tsv
+assets/audio/*.vtt
+assets/audio/*.srt
+assets/audio/*.jsonl

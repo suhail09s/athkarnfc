@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="description" content="NFC audio player for Islamic remembrances with offline playback.">
+    <meta name="theme-color" content="#1a1a24">
+    <link rel="manifest" href="manifest.json">
+    <title>AthkarNFC</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" id="appContainer">
+        <div class="card">
+            
+            <!-- Header -->
+            <div class="header">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+                    </svg>
+                </div>
+                <h1>AthkarNFC</h1>
+                <p>Tap a track to view prayer, tap play to listen</p>
+                <a href="car.html" class="car-mode-link" aria-label="Switch to Car Mode">
+                    <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+                    Switch to Car Mode
+                </a>
+            </div>
+
+            <!-- Tracks -->
+            <div class="tracks" id="tracks">
+                
+                <!-- Track 1 -->
+                <div class="track" data-track="0">
+                    <button class="track-btn" type="button" aria-expanded="false">
+                        <span class="track-number">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </span>
+                        <span class="track-info">
+                            <span class="track-title">دعاء السفر</span>
+                            <span class="track-meta">Travel Prayer</span>
+                        </span>
+                        <span class="track-arrow">
+                            <svg viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
+                        </span>
+                    </button>
+                    <div class="track-content">
+                        <!-- Carousel Container -->
+                        <div class="carousel" id="carousel-0"></div>
+                        
+                        <div class="audio-player">
+                            <button class="skip-btn prev-btn" aria-label="Previous Part">
+                                <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            </button>
+                            <button class="play-pause-btn" aria-label="Play Track">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                            <button class="skip-btn next-btn" aria-label="Next Part">
+                                <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            </button>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="time-display">
+                                    <span class="current-time">0:00</span>
+                                    <span class="duration">0:00</span>
+                                </div>
+                            </div>
+                            <button class="speed-btn" type="button" aria-label="Playback Speed">1x</button>
+                        </div>
+                        <audio preload="metadata" src="assets/audio/track1.mp3"></audio>
+                    </div>
+                </div>
+
+                <!-- Track 2 -->
+                <div class="track" data-track="1">
+                    <button class="track-btn" type="button" aria-expanded="false">
+                        <span class="track-number">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </span>
+                        <span class="track-info">
+                            <span class="track-title">أذكار الصباح</span>
+                            <span class="track-meta">Morning Remembrances</span>
+                        </span>
+                        <span class="track-arrow">
+                            <svg viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
+                        </span>
+                    </button>
+                    <div class="track-content">
+                        <!-- Carousel Container -->
+                        <div class="carousel" id="carousel-1"></div>
+                        
+                        <div class="audio-player">
+                            <button class="skip-btn prev-btn" aria-label="Previous Part">
+                                <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            </button>
+                            <button class="play-pause-btn" aria-label="Play Track">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                            <button class="skip-btn next-btn" aria-label="Next Part">
+                                <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            </button>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="time-display">
+                                    <span class="current-time">0:00</span>
+                                    <span class="duration">0:00</span>
+                                </div>
+                            </div>
+                            <button class="speed-btn" type="button" aria-label="Playback Speed">1x</button>
+                        </div>
+                        <audio preload="metadata" src="assets/audio/track2.mp3"></audio>
+                    </div>
+                </div>
+
+                <!-- Track 3 -->
+                <div class="track" data-track="2">
+                    <button class="track-btn" type="button" aria-expanded="false">
+                        <span class="track-number">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </span>
+                        <span class="track-info">
+                            <span class="track-title">أذكار المساء</span>
+                            <span class="track-meta">Evening Remembrances</span>
+                        </span>
+                        <span class="track-arrow">
+                            <svg viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
+                        </span>
+                    </button>
+                    <div class="track-content">
+                        <!-- Carousel Container -->
+                        <div class="carousel" id="carousel-2"></div>
+
+                        <div class="audio-player">
+                            <button class="skip-btn prev-btn" aria-label="Previous Part">
+                                <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                            </button>
+                            <button class="play-pause-btn" aria-label="Play Track">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </button>
+                            <button class="skip-btn next-btn" aria-label="Next Part">
+                                <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                            </button>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill"></div>
+                                </div>
+                                <div class="time-display">
+                                    <span class="current-time">0:00</span>
+                                    <span class="duration">0:00</span>
+                                </div>
+                            </div>
+                            <button class="speed-btn" type="button" aria-label="Playback Speed">1x</button>
+                        </div>
+                        <audio preload="metadata" src="assets/audio/track3.mp3"></audio>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Status Footer -->
+            <div class="status-bar" aria-live="polite">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Ready</span>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
