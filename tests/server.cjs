@@ -3,7 +3,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { parseRange } = require('../shared.js');
 const root = path.resolve(__dirname, '..');
-const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml' };
+const types = {
+    '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+    '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml', '.png': 'image/png', '.webmanifest': 'application/manifest+json',
+    '.ico': 'image/x-icon', '.txt': 'text/plain', '.md': 'text/markdown'
+};
 const server = http.createServer((request, response) => {
     const url = new URL(request.url, 'http://localhost');
     let pathname;
@@ -28,4 +32,13 @@ const server = http.createServer((request, response) => {
         }
     });
 });
-server.listen(Number(process.env.PORT || 4173), '127.0.0.1', () => console.log(`Local preview: http://127.0.0.1:${server.address().port}`));
+if (require.main === module) {
+    // Loopback only by default. Set HOST=0.0.0.0 to open the preview to a phone
+    // on the same network; note that a LAN address is not a secure context, so
+    // the service worker will not register there.
+    const host = process.env.HOST || '127.0.0.1';
+    server.listen(Number(process.env.PORT || 4173), host, () => {
+        console.log(`Local preview: http://${host === '0.0.0.0' ? '127.0.0.1' : host}:${server.address().port}`);
+    });
+}
+module.exports = { types };

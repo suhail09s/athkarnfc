@@ -59,6 +59,8 @@ npm run serve
 
 Open `http://127.0.0.1:4173`. The development server supports audio range requests. Alternatively use any static HTTP server. Do not open the HTML as a `file://` URL.
 
+To try it on a phone on the same network, run `HOST=0.0.0.0 npm run serve` and open `http://<your-computer-ip>:4173`. A LAN address over plain HTTP is not a secure context, so the service worker and **Save offline** stay unavailable there; use an HTTPS tunnel (for example `cloudflared tunnel --url http://127.0.0.1:4173`) when you need to test offline saving or installation on a device.
+
 ```sh
 npm run check
 npx playwright install chromium webkit

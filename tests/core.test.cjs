@@ -53,6 +53,19 @@ test('the published artifact only contains allowlisted runtime files', () => {
         assert.ok(files.some(name => name === entry || name.startsWith(`${entry}/`)), `Nothing staged for ${entry}`);
     }
 });
+test('the preview server has a content type for every published asset', () => {
+    const { types } = require('./server.cjs');
+    const assets = ['index.html', 'car.html', 'style.css', 'car.css', 'player.css', 'sw.js', 'manifest.json',
+        ...TRACKS.flatMap(track => [track.audio, track.data, track.fallback]).filter(Boolean)];
+    for (const html of ['index.html', 'car.html']) {
+        for (const match of fs.readFileSync(path.join(root, html), 'utf8').matchAll(/(?:src|href)="([^"#]+)"/g)) {
+            if (!match[1].includes('://')) assets.push(match[1].replace(/^\.\//, ''));
+        }
+    }
+    for (const asset of new Set(assets)) {
+        assert.ok(types[path.extname(asset)], `No content type for ${asset}`);
+    }
+});
 test('invalid data and exhausted fallbacks are reported', async () => {
     assert.throws(() => normalizeData([]));
     assert.throws(() => normalizeData([{ dhikr_items: [{ text: 'test', repeatCount: 0 }] }]));
