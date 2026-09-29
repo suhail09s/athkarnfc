@@ -1,3 +1,5 @@
+.DS_Store
+Thumbs.db
 *.pdf
 assets/audio/*.json
 assets/audio/*.txt
@@ -5,3 +7,11 @@ assets/audio/*.tsv
 assets/audio/*.vtt
 assets/audio/*.srt
 assets/audio/*.jsonl
+node_modules/
+test-results/
+playwright-report/
+_site/
+# Local transcript tooling. The builder script is kept; the Whisper weights and
+# the scratch output beside it are not.
+work/*
+!work/build_evening_transcript.py

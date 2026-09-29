@@ -1,70 +1,87 @@
-const CACHE_NAME = 'athkarnfc-dual-v1';
-const ASSETS = [
-    './',
-    './index.html',
-    './style.css',
-    './script.js',
-    './car.html',
-    './car.css',
-    './car.js',
-    './manifest.json',
-    './assets/audio/track1.mp3',
-    './assets/audio/track2.mp3',
-    './assets/audio/track3.mp3',
-    './assets/athkar/evening.json',
-    './assets/athkar/morning.json',
-    './assets/athkar/morning_v2.json'
+'use strict';
+importScripts('./shared.js');
+const SHELL_CACHE = 'athkarnfc-shell-v6';
+const AUDIO_CACHE = 'athkarnfc-audio-v2';
+const SHELL_ASSETS = [
+    './', './index.html', './car.html', './style.css', './car.css',
+    './shared.js', './player.js', './player.css', './manifest.json', './assets/icons/icon.svg',
+    './assets/athkar/travel.json', './assets/athkar/morning.json',
+    './assets/athkar/morning_v2.json', './assets/athkar/evening.json',
+    './assets/athkar/evening_audio.json'
 ];
-
+const absolute = path => new URL(path, self.registration.scope).href;
+const shellURLs = new Set(SHELL_ASSETS.map(absolute));
+const audioURLs = new Set(Athkar.TRACKS.map(track => absolute(track.audio)));
 self.addEventListener('install', event => {
-    // Aggressively cache all critical assets including massive audio files upfront
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
-    );
-    // Force the waiting service worker to become the active service worker
-    self.skipWaiting();
+    // Audio is optional and downloaded only on request; a failed audio download
+    // can never prevent the application shell from installing.
+    event.waitUntil(caches.open(SHELL_CACHE).then(cache => cache.addAll(SHELL_ASSETS)));
 });
-
 self.addEventListener('activate', event => {
-    // Delete obsolete caches
-    event.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-        ))
-    );
-    self.clients.claim();
+    event.waitUntil((async () => {
+        const names = await caches.keys();
+        await Promise.all(names.filter(name => name.startsWith('athkarnfc-') &&
+            name !== SHELL_CACHE && name !== AUDIO_CACHE).map(name => caches.delete(name)));
+        await self.clients.claim();
+    })());
 });
-
-// Cache-First / Stale-While-Revalidate Hybrid Strategy
+async function audioResponse(request, url) {
+    const cache = await caches.open(AUDIO_CACHE);
+    const cached = await cache.match(url);
+    if (!cached) return fetch(request); // Preserve the origin's range behavior.
+    const header = request.headers.get('Range');
+    if (!header) return cached;
+    const blob = await cached.blob();
+    const range = Athkar.parseRange(header, blob.size);
+    if (!range) return new Response(blob, { headers: cached.headers });
+    if (range.unsatisfiable) return new Response(null, {
+        status: 416, headers: { 'Content-Range': `bytes */${blob.size}` }
+    });
+    const { start, end } = range;
+    return new Response(blob.slice(start, end + 1), {
+        status: 206,
+        headers: {
+            'Content-Type': cached.headers.get('Content-Type') || 'audio/mpeg',
+            'Content-Range': `bytes ${start}-${end}/${blob.size}`,
+            'Content-Length': String(end - start + 1),
+            'Accept-Ranges': 'bytes'
+        }
+    });
+}
 self.addEventListener('fetch', event => {
-    // Only intercept GET requests
     if (event.request.method !== 'GET') return;
-
-    // Handle audio range requests gracefully via Cache-First
-    if (event.request.headers.get('range')) {
-        event.respondWith(
-            caches.match(event.request).then(cachedResponse => {
-                if(cachedResponse) return cachedResponse;
-                return fetch(event.request);
-            })
-        );
-        return;
+    const url = new URL(event.request.url);
+    if (url.origin !== self.location.origin) return;
+    url.search = ''; // NFC query parameters select a track in the cached page.
+    if (audioURLs.has(url.href)) {
+        event.respondWith(audioResponse(event.request, url.href));
+    } else if (shellURLs.has(url.href)) {
+        // Versioned shell stays coherent until the next worker activates.
+        event.respondWith(caches.open(SHELL_CACHE).then(async cache =>
+            await cache.match(url.href) || fetch(event.request)));
     }
-
-    event.respondWith(
-        caches.match(event.request).then(cachedResponse => {
-            // Stale-while-revalidate: Fetch fresh copy in background to keep cache up to date
-            const networkFetch = fetch(event.request).then(networkResponse => {
-                if (networkResponse && networkResponse.status === 200) {
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse.clone()));
+});
+self.addEventListener('message', event => {
+    const port = event.ports[0];
+    const { type, path } = event.data || {};
+    if (!port || !['AUDIO_STATUS', 'SAVE_AUDIO', 'REMOVE_AUDIO'].includes(type)) return;
+    event.waitUntil((async () => {
+        try {
+            const url = absolute(path);
+            if (!audioURLs.has(url)) throw new Error('Unknown audio');
+            const cache = await caches.open(AUDIO_CACHE);
+            if (type === 'SAVE_AUDIO' && !await cache.match(url)) {
+                const response = await fetch(url);
+                if (response.status !== 200 || !response.headers.get('Content-Type')?.startsWith('audio/')) {
+                    throw new Error('Audio download failed');
                 }
-                return networkResponse;
-            }).catch(err => {
-                console.warn('Offline Mode Active: Fetch failed, using cache only.', err);
-            });
-
-            // Return cached response immediately if available, otherwise wait for network
-            return cachedResponse || networkFetch;
-        })
-    );
+                await cache.put(url, response); // Resolves only after the full body is stored.
+            } else if (type === 'REMOVE_AUDIO') {
+                await cache.delete(url);
+            }
+            port.postMessage({ ok: true, saved: Boolean(await cache.match(url)) });
+        } catch (error) {
+            port.postMessage({ ok: false, error: error.message });
+        }
+    })());
 });

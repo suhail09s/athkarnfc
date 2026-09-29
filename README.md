@@ -1,90 +1,87 @@
-# athkarnfc
+# AthkarNFC
 
-Mobile-responsive NFC audio player landing page.
+A small Arabic prayer reader and audio player opened from an NFC tag. Built with HTML, CSS and vanilla JavaScript; no runtime framework or build step.
 
-Built with native HTML5, CSS3, and vanilla JavaScript — zero framework dependencies.
+## Use
 
-## Directory Structure
+On opening, autoplay selects morning prayers before 12:00 noon and evening prayers from 12:00 noon, using the device’s local time. Autoplay is enabled by default and can be turned off in Settings. Only one recording plays at a time. Both normal and car modes offer ten-second seeking, playback speed, keyboard-accessible progress sliders, and repetition buttons with reset. Counts are stored as numbers in the prayer data; display labels do not determine behavior.
 
-```
-athkarnfc/
-├── index.html            ← single-page audio player
-├── assets/
-│   └── audio/
-│       ├── track1.mp3    ← دعاء السفر (Travel Prayer)
-│       ├── track2.mp3    ← أذكار الصباح (Morning Remembrances)
-│       └── track3.mp3    ← أذكار المساء (Evening Remembrances)
-├── deploy/
-│   └── deploy.sh         ← deploy script (GCP VM)
-└── README.md
-```
+NFC tags can point to:
 
-## How It Works
+- `/` — normal reader.
+- `/car.html` — larger controls.
+- `/?autoplay=travel`, `/?autoplay=morning`, `/?autoplay=evening`.
+- `/car.html?autoplay=auto` — morning from 00:00 through 11:59 in the device's local time, otherwise evening.
 
-1. User taps an NFC tag → browser opens `https://yourdomain.com/`
-2. Landing page shows 3 audio track buttons
-3. Tap a button → native HTML5 audio player appears, playback starts
-4. Tap another → current track stops and resets, new one plays (mutual exclusion)
+When autoplay is enabled, playback is attempted on opening, but browsers may require pressing Play after navigation. A saved autoplay opt-out is respected even when an NFC URL contains `autoplay=...`; that URL still selects the requested prayer. Explicit travel/morning/evening links override the time-based selection without changing the saved preference. Invalid query values fall back to the normal startup behavior. No unrelated tap starts audio. The app does not interrupt an ongoing session when noon arrives. The time-based selection is a convenience, not a calculation of local prayer times.
 
-## Prerequisites
+## Saved preferences
 
-- A GCP VM instance (Debian/Ubuntu) with a public IP and a domain pointing to it
-- Nginx (recommended) or Apache installed on the VM
-- Three audio files in MP3 or WAV format named `track1`, `track2`, `track3`
+The Settings button stays available in both modes, including the focused reader. Preferences are stored locally in this browser and shared across normal and car modes:
 
-## Setup
+- Autoplay when opening (default: on).
+- Playback speed: 1x, 1.25x, 1.5x or 2x (default: 1x).
+- Keep screen awake while playing (default: on, where supported).
+- Vibrate when counting (default: on, where supported).
+- Follow synchronized prayer text automatically (default: on).
 
-1. Drop your `.mp3`/`.wav` files into `assets/audio/` following the naming above
-2. ~~Edit `index.html` and update the three `src` paths in the `<audio>` tags if your filenames differ~~
-3. Run the deploy script (assumes `gcloud` CLI and SSH key are configured):
+Changes apply immediately except autoplay, which applies on the next opening. Changing speed in the player also updates the saved setting. Existing speed preferences from older versions are preserved. With autoplay off, opening the app restores the last selected prayer without playing it; an explicit NFC selection takes precedence. Preferences are validated, and unavailable browser storage falls back to session-only settings with a visible message. Settings changes in another open tab update controls without starting audio.
 
-```bash
-bash deploy/deploy.sh
-```
+Preferences are not synced across browsers or devices and are lost if site storage is cleared. Counts reset on a page reload; playback position is not persisted. Screen wake lock is requested only during playback when enabled and released on pause, close or completion where the browser supports it.
 
-Or manually:
+## Offline use
 
-```bash
-rsync -avz --delete ./ user@your-vm-ip:/var/www/athkarnfc/
+Serve through HTTPS (localhost also works). The service worker saves the pages, styles, scripts and prayer data. Audio is **not** downloaded automatically.
+
+Press **Save offline** for each recording you want. Wait for **Audio available offline** before disconnecting. The button then lets you remove the stored audio. Saved recordings support seeking offline, including HTTP byte-range responses. Browser storage can be cleared or evicted, so check availability before relying on it.
+
+The worker uses versioned shell caches. After an update installs, close all app tabs/windows and reopen to activate it. Increment the shell cache version when changing cached application assets. External Google Fonts are optional; system fonts remain available offline.
+
+## Local development
+
+Use Node.js 22 or newer:
+
+```sh
+npm ci
+npm run serve
 ```
 
-Then configure Nginx:
+Open `http://127.0.0.1:4173`. The development server supports audio range requests. Alternatively use any static HTTP server. Do not open the HTML as a `file://` URL.
 
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    root /var/www/athkarnfc;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-
-    location ~* \.(mp3|wav|ogg)$ {
-        add_header Cache-Control "public, max-age=86400";
-    }
-}
+```sh
+npm run check
+npx playwright install chromium webkit
+npm run test:browser
 ```
 
-Add an HTTPS redirect with Certbot (`sudo certbot --nginx`).
+Checks cover data validation, repetition counts, fallback loading, byte ranges, deployment completeness, playback controls, blocked autoplay, mobile layout, and offline playback in Chromium and emulated mobile WebKit. Offline tests shut down the actual local origin server; Chromium additionally uses browser offline emulation. WebKit’s offline emulation rejected cached requests in the macOS test environment, so server shutdown is used to verify cache-only behavior there. CI runs the same suite. These browser tests do not replace physical iPhone/Android NFC, Bluetooth, steering-wheel or lock-screen testing.
 
-## NFC Tag Encoding
+## Files
 
-Encode your NFC tag with: `https://yourdomain.com/`
+- `index.html`, `style.css`: normal reader.
+- `car.html`, `car.css`: car-mode layout.
+- `player.js`, `player.css`: shared player and interaction behavior.
+- `shared.js`: track configuration, data validation and reusable helpers.
+- `assets/athkar/`: prayer text, numeric repetition counts and transcript segments. `evening_audio.json` follows the evening recording's spoken order and timing; `evening.json` remains its reading-only fallback.
+- `assets/audio/`: three recordings and `SOURCES.md` attribution.
+- `sw.js`: app-shell caching and user-requested offline audio.
+- `deploy/files.txt`: explicit publication allowlist.
+- `tests/`: data, asset and browser regression tests.
 
-## Customization
+Morning and evening text load independently. If the synchronized morning dataset fails, the separate morning reading collection is used. The app never generates morning prayers by rewriting evening text. The evening recording was transcribed locally with Whisper and manually aligned at prayer boundaries to reviewed text from the existing collection. Its audio includes three spoken cycles of Al-Ikhlas, Al-Falaq and An-Nas plus two invocations absent from the previous evening list, so the synchronized cards follow the recording rather than the older list's order. `evening.json` remains the fallback. This engineering update does not constitute religious certification; the two newly added invocations and all timestamp boundaries should receive human review before publication.
 
-- **Track names/labels** — edit the `.track-title` spans in `index.html`
-- **Colors** — update the CSS custom properties in `index.html` (search for `#5856d6`, `#1a1a24`, etc.)
-- **Dark/light mode** — both are supported via `prefers-color-scheme`
+## Deployment
 
-## Browser Compatibility
+The site works on a static HTTPS host. Publish the entries in `deploy/files.txt`; exclude `.git`, `node_modules`, tests and development files. Subdirectory hosting is supported through relative asset paths.
 
-- iOS Safari (14+) — fully tested, onclick triggers audio
-- Android Chrome — fully tested
-- Desktop Chrome, Firefox, Safari — full support
+For the existing GCP/Nginx setup, configure `gcloud` and run:
 
-## License
+```sh
+VM_NAME=athkarnfc-vm VM_ZONE=us-central1-a REMOTE_DIR=/var/www/athkarnfc bash deploy/deploy.sh
+```
 
-MIT
+The script stages all published files through the SSH user's home, then copies them into the served directory with sudo. It does not change DNS, Nginx or TLS configuration and does not delete unrelated remote files. The SSH user needs the required VM access and sudo privileges. Set the static server's `.mp3` content type to `audio/mpeg` and retain byte-range support. Serve `sw.js` with revalidation/no-cache headers so browsers can discover updates.
+
+## Audio attribution and rights
+
+The evening recording is Mishary Alafasy's 1434 AH edition, downloaded from [IslamHouse](https://islamhouse.com/ar/audios/327603/). Exact source, checksum and rights status are in [audio sources](assets/audio/SOURCES.md). Redistribution permission was not established; confirm it before publicly publishing the bundled media. The original README identified the code as MIT; audio recordings are separate works and are not covered by that statement.
