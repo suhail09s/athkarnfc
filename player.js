@@ -8,10 +8,12 @@
         save: 'حفظ للاستماع دون اتصال', remove: 'حذف النسخة المحفوظة', saving: 'جارٍ الحفظ…',
         saved: 'الصوت متاح دون اتصال', saveFailed: 'تعذر الحفظ. تحقق من الاتصال والمساحة المتاحة.',
         unavailable: 'الحفظ دون اتصال غير متاح حاليًا.', count: 'تسجيل تكرار', complete: 'مكتمل', reset: 'إعادة العد',
-        remaining: 'متبقي', manual: 'تستخدم أزرار التنقل توقيتًا تقديريًا لهذا التسجيل.', tap: 'اضغط تشغيل لبدء الاستماع.'
+        remaining: 'متبقي', manual: 'تستخدم أزرار التنقل توقيتًا تقديريًا لهذا التسجيل.', tap: 'اضغط تشغيل لبدء الاستماع.',
+        fallback: 'تعذر تحميل النص المتزامن مع التسجيل، لذا تُعرض قائمة القراءة. وقد لا يتطابق ترتيبها وأعداد التكرار مع هذا التسجيل.'
     } : {
         play: 'Play track', pause: 'Pause track', ready: 'Ready', playing: 'Playing', paused: 'Paused',
         failed: 'Playback failed. Check your connection and try again.', loadFailed: 'Could not load prayers.', retry: 'Retry',
+        fallback: 'Synchronized text is unavailable, so the reading list is shown. Its order and repetition counts may not match this recording.',
         save: 'Save offline', remove: 'Remove offline audio', saving: 'Saving…', saved: 'Audio available offline',
         saveFailed: 'Could not save audio. Check your connection and available storage.', unavailable: 'Offline saving is unavailable right now.',
         count: 'Count repetition', complete: 'Complete', reset: 'Reset count', remaining: 'Remaining',
@@ -42,7 +44,7 @@
         return { ...track, index, panel, audio: panel.querySelector('audio'),
             content: carMode ? panel.querySelector('.prayer-text-container') : panel.querySelector('.carousel'),
             play: panel.querySelector('.play-pause-btn'), seek: panel.querySelector('.progress-bar'),
-            speedButton: panel.querySelector('.speed-btn'), lastChunk: null };
+            speedButton: panel.querySelector('.speed-btn'), lastChunk: null, scrollTarget: null };
     });
     const playIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
     const pauseIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
@@ -82,7 +84,10 @@
     function mediaSession(state) {
         if (!('mediaSession' in navigator)) return;
         if ('MediaMetadata' in window) navigator.mediaSession.metadata = new MediaMetadata({
-            title: state.title, artist: 'Mishary Alafasy', album: 'AthkarNFC'
+            title: state.title,
+            // Only credit a reciter where the provenance is documented.
+            ...(state.artist ? { artist: state.artist } : {}),
+            album: 'AthkarNFC'
         });
         const handlers = {
             play: () => play(state), pause: () => state.audio.pause(),
@@ -131,7 +136,11 @@
             if (error.name !== 'AbortError') status(state, labels.failed, true);
         }
     }
+    // Cues depend only on the dataset and the media duration, so recomputing
+    // them on every timeupdate is wasted work.
     function updateCues(state) {
+        if (state.cues && state.cueDuration === state.audio.duration) return;
+        state.cueDuration = state.audio.duration;
         state.cues = prayerCues(state.items || [], state.audio.duration);
     }
     function prayerAtTime(state) {
@@ -145,6 +154,10 @@
         if (!chunk) return;
         state.activePrayer = index;
         state.lastChunk = chunk;
+        // The scroll animates through the neighbouring cards, so remember the
+        // card that was asked for: intermediate positions must not move the
+        // selection while it settles.
+        state.scrollTarget = preferences.autoScroll ? index : null;
         if (preferences.autoScroll) chunk.scrollIntoView({
             behavior: smooth ? 'smooth' : 'auto', block: 'nearest', inline: 'start'
         });
@@ -155,6 +168,9 @@
         index = Math.max(0, Math.min(state.items.length - 1, index));
         select(state);
         state.pendingPrayer = index;
+        // The card is selected first and the scroll catches up. Because the
+        // selection stays authoritative while it animates, a quick second tap
+        // moves on from the requested prayer instead of repeating the first.
         showPrayer(state, index);
         if (!Number.isFinite(state.audio.duration) || state.audio.duration <= 0) state.audio.load();
         else {
@@ -177,13 +193,20 @@
         state.play.setAttribute('aria-label', audio.paused ? labels.play : labels.pause);
         updateCues(state);
         const prayerIndex = prayerAtTime(state);
-        if (!audio.paused && prayerIndex !== state.activePrayer) showPrayer(state, prayerIndex);
+        // A requested prayer, or a seek, reports the old position until the
+        // media is ready, so the follower must not move the selection yet.
+        const settling = (state.pendingPrayer ?? null) !== null || audio.seeking;
+        if (!audio.paused && !settling && prayerIndex !== state.activePrayer) showPrayer(state, prayerIndex);
         for (const span of state.content.querySelectorAll('.sync-span')) {
             const active = !audio.paused && audio.currentTime >= Number(span.dataset.start) && audio.currentTime < Number(span.dataset.end);
             span.classList.toggle('active-sync', active);
             if (active) {
                 const chunk = span.closest('.prayer-chunk, .slide');
-                if (preferences.autoScroll && chunk !== state.lastChunk) {
+                // Only follow the text inside the selected prayer. A segment
+                // left over from the previous card would otherwise scroll the
+                // carousel back right after Next or Previous was tapped.
+                const selected = chunk === state.content.children[state.activePrayer];
+                if (preferences.autoScroll && selected && chunk !== state.lastChunk) {
                     chunk.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
                     state.lastChunk = chunk;
                 }
@@ -192,6 +215,9 @@
     }
     function renderPrayers(state, items) {
         state.items = items;
+        // Force the cues to be rebuilt for this dataset even if the duration
+        // has not changed (for example when a retry succeeds).
+        state.cues = null;
         state.activePrayer = 0;
         state.content.replaceChildren();
         state.content.lang = 'ar';
@@ -219,8 +245,10 @@
             reset.lang = carMode ? 'ar' : 'en';
             let remaining = item.repeatCount;
             function updateCount() {
-                count.textContent = remaining ? `متبقي: ${remaining}` : '✓ مكتمل';
-                count.setAttribute('aria-label', `${labels.count}: ${remaining} ${labels.remaining}`);
+                count.textContent = remaining ? `${labels.remaining}: ${remaining}` : `✓ ${labels.complete}`;
+                count.setAttribute('aria-label', remaining
+                    ? `${labels.count}: ${remaining} ${labels.remaining}`
+                    : `${labels.complete} ${labels.count}`);
                 count.setAttribute('aria-disabled', String(remaining === 0));
                 chunk.classList.toggle('complete', remaining === 0);
                 reset.hidden = remaining === item.repeatCount;
@@ -238,6 +266,7 @@
             state.content.append(chunk);
         }
         state.note.hidden = items.some(item => item.segments.length);
+        state.sourceNote.hidden = !state.usedFallback;
         if (!carMode) {
             state.navigation?.remove();
             const navigation = element('nav', 'prayer-navigation');
@@ -254,9 +283,24 @@
                 previous.disabled = index === 0;
                 next.disabled = index === items.length - 1;
             }
-            previous.addEventListener('click', () => jumpToPrayer(state, nearest() - 1));
-            next.addEventListener('click', () => jumpToPrayer(state, nearest() + 1));
-            state.content.onscroll = () => updateNavigation();
+            // Navigate from the selected prayer, not from the live scroll
+            // position, which lags behind while a scroll is animating.
+            previous.addEventListener('click', () => jumpToPrayer(state, (state.activePrayer ?? nearest()) - 1));
+            next.addEventListener('click', () => jumpToPrayer(state, (state.activePrayer ?? nearest()) + 1));
+            for (const event of ['pointerdown', 'wheel', 'keydown']) {
+                // The reader taking over may scroll anywhere, so the requested
+                // card stops being authoritative.
+                state.content.addEventListener(event, () => { state.scrollTarget = null; }, { passive: true });
+            }
+            state.content.onscroll = () => {
+                const index = nearest();
+                if (state.scrollTarget !== null && index !== state.scrollTarget) return;
+                state.scrollTarget = null;
+                // Reading the text by hand moves the selection too, so the
+                // buttons continue from the card the reader is looking at.
+                state.activePrayer = index;
+                updateNavigation(index);
+            };
             navigation.append(previous, next);
             navigation.hidden = items.length < 2;
             state.content.after(navigation);
@@ -266,8 +310,11 @@
         }
     }
     async function loadPrayers(state) {
-        try { renderPrayers(state, await loadTrack(state)); }
-        catch (_) {
+        try {
+            const { items, usedFallback } = await loadTrack(state);
+            state.usedFallback = usedFallback;
+            renderPrayers(state, items);
+        } catch (_) {
             const message = element('div', 'load-error', labels.loadFailed);
             const retry = element('button', 'retry-button', labels.retry);
             retry.type = 'button';
@@ -308,7 +355,9 @@
         state.status.setAttribute('role', 'status');
         state.note = element('p', 'transcript-note', labels.manual);
         state.note.hidden = true;
-        state.content.before(state.note);
+        state.sourceNote = element('p', 'transcript-note fallback-note', labels.fallback);
+        state.sourceNote.hidden = true;
+        state.content.before(state.sourceNote, state.note);
         const actions = element('div', 'offline-actions');
         state.offline = element('button', 'offline-button', labels.save);
         state.offline.type = 'button';
@@ -318,9 +367,12 @@
         actions.append(state.offline, state.offlineStatus);
         const host = carMode ? panel : panel.querySelector('.track-content');
         host.append(state.status, actions);
-        if (state.id === 'evening') {
-            const source = element('a', 'audio-source', carMode ? 'مصدر التسجيل: IslamHouse — مشاري العفاسي' : 'Audio: Mishary Alafasy · IslamHouse');
-            source.href = 'https://islamhouse.com/ar/audios/327603/';
+        if (state.source) {
+            const credit = carMode
+                ? `مصدر التسجيل: IslamHouse — ${state.artistAr || state.artist}`
+                : `Audio: ${state.artist} · IslamHouse`;
+            const source = element('a', 'audio-source', credit);
+            source.href = state.source;
             source.target = '_blank'; source.rel = 'noopener noreferrer';
             host.append(source);
         }
@@ -468,7 +520,10 @@
         });
     }
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready).then(registration => {
+        // 'none' keeps sw.js and the scripts it imports out of the HTTP cache, so a
+        // new deployment is picked up on the next visit instead of waiting out a
+        // cache lifetime that a static host controls.
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(() => navigator.serviceWorker.ready).then(registration => {
             offlineWorker = registration.active;
             refreshOffline();
         }).catch(() => states.forEach(state => { state.offlineStatus.textContent = labels.unavailable; }));

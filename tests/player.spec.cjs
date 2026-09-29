@@ -26,11 +26,17 @@ for (const mode of ['normal', 'car']) {
         await page.goto(url);
         const panel = page.locator(active);
         await expect(panel.locator('.repeat-badge')).toHaveCount(32);
-        const counter = panel.locator('.repeat-badge').filter({ hasText: 'متبقي: 3' }).first();
+        // evening_audio.json follows the recording, which recites each prayer
+        // once, so a single press completes the count in either mode.
+        const counter = panel.locator('.repeat-badge').first();
+        const restingLabel = await counter.textContent();
         await counter.focus();
         await page.keyboard.press('Enter');
-        await expect(panel.locator('.repeat-badge').filter({ hasText: 'متبقي: 2' }).first()).toBeVisible();
+        await expect(counter).toHaveAttribute('aria-disabled', 'true');
+        await expect(counter).toHaveText(/مكتمل|Complete/);
         await panel.locator('.reset-count:visible').first().click();
+        await expect(counter).toHaveAttribute('aria-disabled', 'false');
+        await expect(counter).toHaveText(restingLabel);
         // Ensure media is started through a real user gesture on both browser engines.
         await panel.locator('audio').evaluate(audio => audio.pause());
         await panel.locator('.play-pause-btn').click();
@@ -83,6 +89,14 @@ test('morning remains usable when evening data is unavailable', async ({ page })
     await expect(page.locator('#carousel-1 .repeat-badge')).toHaveCount(13);
     await expect(page.locator('#carousel-2 .retry-button')).toHaveCount(1);
 });
+test('the reading list is labelled when the synchronized dataset fails', async ({ page }) => {
+    await page.route('**/assets/athkar/morning_v2.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+    await page.goto('/?autoplay=morning');
+    const morning = page.locator('.track[data-track="1"]');
+    await expect(morning.locator('.repeat-badge')).toHaveCount(31);
+    await expect(morning.locator('.fallback-note')).toBeVisible();
+    await expect(morning.locator('.fallback-note')).toHaveText(/reading list/);
+});
 test('blocked autoplay does not hijack closing or switching tracks', async ({ page }) => {
     await page.addInitScript(() => {
         HTMLMediaElement.prototype.play = function () { return Promise.reject(new DOMException('Blocked', 'NotAllowedError')); };
@@ -96,15 +110,26 @@ test('small screens have no horizontal overflow in either mode', async ({ page }
     await page.setViewportSize({ width: 320, height: 700 });
     for (const url of ['/?autoplay=morning', '/car.html?autoplay=morning']) {
         await page.goto(url);
-        await expect(page.locator('.repeat-badge')).toHaveCount(44);
+        // Wait for the morning track specifically: the first badge in the DOM
+        // belongs to a collapsed panel in normal mode.
+        const morning = url.startsWith('/car')
+            ? page.locator('#morning .repeat-badge')
+            : page.locator('#carousel-1 .repeat-badge');
+        await expect(morning).toHaveCount(13);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
     }
 });
 
 test('prayer navigation preserves counts and switching pauses the old recording', async ({ page }) => {
+    // Drive playback from the test: with autoplay left on, which track is open
+    // depends on the clock, and playback may already have carried the follower
+    // past the first prayer before the first assertion.
+    await page.addInitScript(() => localStorage.setItem(
+        'athkarnfc_preferences_v1', JSON.stringify({ autoplay: false, speed: 1 })));
     await page.goto('/?autoplay=morning');
     const morning = page.locator('.track[data-track="1"]');
     await expect(morning.locator('.repeat-badge')).toHaveCount(13);
+    await expect(morning.locator('.prayer-previous')).toBeDisabled();
     await morning.locator('.prayer-next').click();
     await expect(morning.locator('.prayer-previous')).toBeEnabled();
     await expect.poll(() => morning.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(30);

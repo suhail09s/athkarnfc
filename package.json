@@ -2,11 +2,13 @@
   "name": "athkarnfc",
   "version": "1.0.0",
   "private": true,
+  "engines": { "node": ">=22" },
   "scripts": {
     "test": "node --test tests/*.test.cjs",
     "test:browser": "playwright test",
     "check": "node --check shared.js && node --check player.js && node --check sw.js && npm test",
-    "serve": "node tests/server.cjs"
+    "serve": "node tests/server.cjs",
+    "stage": "node deploy/stage.cjs"
   },
   "devDependencies": { "@playwright/test": "^1.58.2" }
 }

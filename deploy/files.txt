@@ -7,4 +7,6 @@ player.js
 player.css
 sw.js
 manifest.json
+CNAME
+.nojekyll
 assets

@@ -26,7 +26,32 @@ test('morning failure uses its own dataset and never requests evening', async ()
             json: async () => JSON.parse(fs.readFileSync(path.join(root, url))) };
     });
     assert.deepEqual(requested, [TRACKS[1].data, TRACKS[1].fallback]);
-    assert.equal(result.length, 31);
+    assert.equal(result.items.length, 31);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.path, TRACKS[1].fallback);
+});
+test('the synchronized dataset is used and reported when it loads', async () => {
+    const result = await loadTrack(TRACKS[2], async url => ({
+        ok: true, status: 200, json: async () => JSON.parse(fs.readFileSync(path.join(root, url)))
+    }));
+    assert.equal(result.usedFallback, false);
+    assert.equal(result.path, TRACKS[2].data);
+    assert.equal(result.items.length, 32);
+});
+test('the published artifact only contains allowlisted runtime files', () => {
+    const { collect, entries } = require('../deploy/stage.cjs');
+    const files = collect().map(file => file.name);
+    for (const required of ['index.html', 'car.html', 'sw.js', 'manifest.json', 'CNAME', '.nojekyll']) {
+        assert.ok(files.includes(required), `Artifact is missing ${required}`);
+    }
+    for (const asset of ['assets/audio/track3.mp3', 'assets/icons/apple-touch-icon.png', 'assets/icons/icon-192.png']) {
+        assert.ok(files.includes(asset), `Artifact is missing ${asset}`);
+    }
+    assert.ok(!files.some(name => name.includes('.DS_Store') || name.startsWith('work/') ||
+        name.startsWith('tests/') || name.startsWith('deploy/')), 'Local files must not be published');
+    for (const entry of entries()) {
+        assert.ok(files.some(name => name === entry || name.startsWith(`${entry}/`)), `Nothing staged for ${entry}`);
+    }
 });
 test('invalid data and exhausted fallbacks are reported', async () => {
     assert.throws(() => normalizeData([]));
@@ -51,6 +76,7 @@ test('offline audio byte ranges support bounded, open-ended and suffix requests'
 test('all referenced local page assets, shell assets and audio are deployable', () => {
     const deploy = fs.readFileSync(path.join(root, 'deploy/files.txt'), 'utf8').trim().split('\n');
     function check(asset) {
+        if (!asset) return;
         asset = asset.replace(/^\.\//, '');
         if (!asset) return;
         assert.ok(fs.existsSync(path.join(root, asset)), `Missing ${asset}`);
@@ -65,7 +91,7 @@ test('all referenced local page assets, shell assets and audio are deployable', 
     const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
     const assets = sw.match(/const SHELL_ASSETS = \[([\s\S]*?)\];/)[1];
     for (const match of assets.matchAll(/'([^']+)'/g)) check(match[1]);
-    for (const track of TRACKS) { check(track.audio); check(track.data); }
+    for (const track of TRACKS) { check(track.audio); check(track.data); check(track.fallback); }
     assert.ok(!assets.includes('.mp3'), 'Large audio must not block shell installation');
 });
 

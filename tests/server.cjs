@@ -6,7 +6,10 @@ const root = path.resolve(__dirname, '..');
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.mp3': 'audio/mpeg', '.svg': 'image/svg+xml' };
 const server = http.createServer((request, response) => {
     const url = new URL(request.url, 'http://localhost');
-    const file = path.resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
+    let pathname;
+    try { pathname = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname); }
+    catch (_) { response.writeHead(400).end(); return; }
+    const file = path.resolve(root, '.' + pathname);
     if (!file.startsWith(root + path.sep)) { response.writeHead(403).end(); return; }
     fs.stat(file, (error, stat) => {
         if (error || !stat.isFile()) { response.writeHead(404).end(); return; }

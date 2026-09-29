@@ -71,3 +71,7 @@ body:has(.container) { flex-direction: column; align-items: center; }
 .settings-row input { width: 24px; height: 24px; accent-color: #af52de; flex-shrink: 0; }
 .settings-row select { min-height: 40px; padding: 6px; background: #29243c; color: #fff; border: 1px solid #666680; border-radius: 6px; font: inherit; }
 .settings-row select:focus-visible { outline: 3px solid #cbb3ff; outline-offset: 3px; }
+/* Shown when the synchronized dataset failed and the reading list is used. */
+.fallback-note { color: #ffd9a0; }
+/* Shown only when scripting is unavailable. */
+.noscript { padding: 16px; color: #ffb5b5; }

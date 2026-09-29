@@ -1,10 +1,10 @@
 # AthkarNFC
 
-A small Arabic prayer reader and audio player opened from an NFC tag. Built with HTML, CSS and vanilla JavaScript; no runtime framework or build step.
+A small Arabic prayer reader and audio player opened from an NFC tag. Built with HTML, CSS and vanilla JavaScript; no runtime framework or build step. The site is published to GitHub Pages by GitHub Actions.
 
 ## Use
 
-On opening, autoplay selects morning prayers before 12:00 noon and evening prayers from 12:00 noon, using the device’s local time. Autoplay is enabled by default and can be turned off in Settings. Only one recording plays at a time. Both normal and car modes offer ten-second seeking, playback speed, keyboard-accessible progress sliders, and repetition buttons with reset. Counts are stored as numbers in the prayer data; display labels do not determine behavior.
+On opening, autoplay selects morning prayers before 12:00 noon and evening prayers from 12:00 noon, using the device's local time. Autoplay is enabled by default and can be turned off in Settings. Only one recording plays at a time. Both normal and car modes offer ten-second seeking, playback speed, keyboard-accessible progress sliders, and repetition buttons with reset. Normal mode adds Previous and Next prayer buttons, which move one prayer at a time from the card being read, even while the text is still scrolling into place. Counts are stored as numbers in the prayer data; display labels do not determine behavior.
 
 NFC tags can point to:
 
@@ -14,6 +14,17 @@ NFC tags can point to:
 - `/car.html?autoplay=auto` — morning from 00:00 through 11:59 in the device's local time, otherwise evening.
 
 When autoplay is enabled, playback is attempted on opening, but browsers may require pressing Play after navigation. A saved autoplay opt-out is respected even when an NFC URL contains `autoplay=...`; that URL still selects the requested prayer. Explicit travel/morning/evening links override the time-based selection without changing the saved preference. Invalid query values fall back to the normal startup behavior. No unrelated tap starts audio. The app does not interrupt an ongoing session when noon arrives. The time-based selection is a convenience, not a calculation of local prayer times.
+
+## Synchronized text and fallbacks
+
+Each recitation has a synchronized dataset and a reading-only fallback:
+
+| Track | Synchronized | Reading fallback |
+| --- | --- | --- |
+| Morning | `assets/athkar/morning_v2.json` | `assets/athkar/morning.json` |
+| Evening | `assets/athkar/evening_audio.json` | `assets/athkar/evening.json` |
+
+The synchronized datasets follow the recording, so they contain what the reciter actually recites. `evening_audio.json` keeps the three spoken cycles of Al-Ikhlas, Al-Falaq and An-Nas as separate cards and sets every count to one, while the reading fallback keeps the longer classical list with its 3, 4, 7, 10 and 100 repetitions. The two lists are therefore not interchangeable: when a synchronized dataset fails to load, the reading list is used and the player says so above the text. Morning and evening load independently, and the app never generates one track's prayers by rewriting the other's text.
 
 ## Saved preferences
 
@@ -33,9 +44,9 @@ Preferences are not synced across browsers or devices and are lost if site stora
 
 Serve through HTTPS (localhost also works). The service worker saves the pages, styles, scripts and prayer data. Audio is **not** downloaded automatically.
 
-Press **Save offline** for each recording you want. Wait for **Audio available offline** before disconnecting. The button then lets you remove the stored audio. Saved recordings support seeking offline, including HTTP byte-range responses. Browser storage can be cleared or evicted, so check availability before relying on it.
+Press **Save offline** for each recording you want. Wait for **Audio available offline** before disconnecting. The button then lets you remove the stored audio. Saved recordings support seeking offline: the worker answers HTTP byte-range requests from the saved copy, reusing the stored body instead of re-reading the whole file on every seek. Browser storage can be cleared or evicted, so check availability before relying on it.
 
-The worker uses versioned shell caches. After an update installs, close all app tabs/windows and reopen to activate it. Increment the shell cache version when changing cached application assets. External Google Fonts are optional; system fonts remain available offline.
+The worker uses versioned shell caches. After an update installs, close all app tabs/windows and reopen to activate it. Increment the shell cache version when changing cached application assets. Registration uses `updateViaCache: 'none'`, so the worker and the scripts it imports are always revalidated rather than served from an HTTP cache that a static host may keep for minutes. External Google Fonts are optional; system fonts remain available offline.
 
 ## Local development
 
@@ -52,9 +63,10 @@ Open `http://127.0.0.1:4173`. The development server supports audio range reques
 npm run check
 npx playwright install chromium webkit
 npm run test:browser
+npm run stage
 ```
 
-Checks cover data validation, repetition counts, fallback loading, byte ranges, deployment completeness, playback controls, blocked autoplay, mobile layout, and offline playback in Chromium and emulated mobile WebKit. Offline tests shut down the actual local origin server; Chromium additionally uses browser offline emulation. WebKit’s offline emulation rejected cached requests in the macOS test environment, so server shutdown is used to verify cache-only behavior there. CI runs the same suite. These browser tests do not replace physical iPhone/Android NFC, Bluetooth, steering-wheel or lock-screen testing.
+`npm run stage` builds the published site into `_site` exactly as the deployment workflow does. Checks cover data validation, repetition counts, fallback loading and reporting, byte ranges, deployment completeness, playback controls, blocked autoplay, mobile layout, and offline playback in Chromium and emulated mobile WebKit. Offline tests shut down the actual local origin server; Chromium additionally uses browser offline emulation. WebKit's offline emulation rejected cached requests in the macOS test environment, so server shutdown is used to verify cache-only behavior there. CI runs the same suite. These browser tests do not replace physical iPhone/Android NFC, Bluetooth, steering-wheel or lock-screen testing.
 
 ## Files
 
@@ -62,26 +74,36 @@ Checks cover data validation, repetition counts, fallback loading, byte ranges, 
 - `car.html`, `car.css`: car-mode layout.
 - `player.js`, `player.css`: shared player and interaction behavior.
 - `shared.js`: track configuration, data validation and reusable helpers.
-- `assets/athkar/`: prayer text, numeric repetition counts and transcript segments. `evening_audio.json` follows the evening recording's spoken order and timing; `evening.json` remains its reading-only fallback.
+- `assets/athkar/`: prayer text, numeric repetition counts and transcript segments.
 - `assets/audio/`: three recordings and `SOURCES.md` attribution.
+- `assets/icons/`: SVG icon and the generated PNG icons used for installation and home screens.
 - `sw.js`: app-shell caching and user-requested offline audio.
 - `deploy/files.txt`: explicit publication allowlist.
+- `deploy/stage.cjs`: builds the Pages artifact from that allowlist.
+- `.github/workflows/`: continuous checks and the Pages deployment.
 - `tests/`: data, asset and browser regression tests.
+- `work/`: the local Whisper transcript builder and its output. Only the builder script is committed; the 275 MB of model weights beside it stay out of git and out of the published site.
 
-Morning and evening text load independently. If the synchronized morning dataset fails, the separate morning reading collection is used. The app never generates morning prayers by rewriting evening text. The evening recording was transcribed locally with Whisper and manually aligned at prayer boundaries to reviewed text from the existing collection. Its audio includes three spoken cycles of Al-Ikhlas, Al-Falaq and An-Nas plus two invocations absent from the previous evening list, so the synchronized cards follow the recording rather than the older list's order. `evening.json` remains the fallback. This engineering update does not constitute religious certification; the two newly added invocations and all timestamp boundaries should receive human review before publication.
+The evening recording was transcribed locally with Whisper and manually aligned at prayer boundaries to reviewed text from the existing collection. Its audio includes three spoken cycles of Al-Ikhlas, Al-Falaq and An-Nas plus two invocations absent from the previous evening list, so the synchronized cards follow the recording rather than the older list's order. `evening.json` remains the fallback. This engineering update does not constitute religious certification; the two newly added invocations and all timestamp boundaries should receive human review before publication.
 
-## Deployment
+## Deployment (GitHub Pages)
 
-The site works on a static HTTPS host. Publish the entries in `deploy/files.txt`; exclude `.git`, `node_modules`, tests and development files. Subdirectory hosting is supported through relative asset paths.
+The site is static, so it publishes straight from the repository. One-time setup:
 
-For the existing GCP/Nginx setup, configure `gcloud` and run:
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+2. Keep `CNAME` (`nfc.tajseed3d.com`) in the repository and at the root of the published artifact. Point the domain's DNS at GitHub Pages (a `CNAME` record for the subdomain, A/AAAA records for an apex domain), then enable **Enforce HTTPS** once the certificate is issued.
+3. Push to `main`. The `Deploy to GitHub Pages` workflow runs `npm run check`, stages the site with `node deploy/stage.cjs _site`, and uploads that directory as the Pages artifact.
 
-```sh
-VM_NAME=athkarnfc-vm VM_ZONE=us-central1-a REMOTE_DIR=/var/www/athkarnfc bash deploy/deploy.sh
-```
+Only the paths listed in `deploy/files.txt`, plus everything under the directories listed there, are published. Staging skips `.DS_Store`, `Thumbs.db` and `.gitkeep`; `.git`, `node_modules`, `tests`, `deploy` and `work` never reach the site. The empty `.nojekyll` file is published so Pages copies the site verbatim instead of running Jekyll, and a failing `npm run check` stops the deployment before it starts.
 
-The script stages all published files through the SSH user's home, then copies them into the served directory with sudo. It does not change DNS, Nginx or TLS configuration and does not delete unrelated remote files. The SSH user needs the required VM access and sudo privileges. Set the static server's `.mp3` content type to `audio/mpeg` and retain byte-range support. Serve `sw.js` with revalidation/no-cache headers so browsers can discover updates.
+Notes that are specific to this host:
+
+- Response headers are not configurable. The service worker therefore accepts a host that serves audio as `application/octet-stream`, and audio saved for offline use is served from the cache with byte ranges, so seeking works without any server support. GitHub Pages does support range requests for uncached audio and serves `.mp3` as `audio/mpeg`.
+- The recordings (about 38 MB) are stored in git because the artifact is built from the checkout. Pages allows 1 GB per repository and asks for under 100 GB of traffic per month. Git LFS is deliberately not used, because the published artifact needs the actual bytes.
+- Subdirectory hosting also works, because every asset path in the pages and scripts is relative.
 
 ## Audio attribution and rights
 
 The evening recording is Mishary Alafasy's 1434 AH edition, downloaded from [IslamHouse](https://islamhouse.com/ar/audios/327603/). Exact source, checksum and rights status are in [audio sources](assets/audio/SOURCES.md). Redistribution permission was not established; confirm it before publicly publishing the bundled media. The original README identified the code as MIT; audio recordings are separate works and are not covered by that statement.
+
+Only the evening recording has a documented reciter, so `TRACKS` in `shared.js` records an artist for that track alone. The player shows that credit and publishes it as Media Session metadata; the other two recordings deliberately carry no artist rather than an unverified one. `SOURCES.md` remains the record of provenance, not a grant of rights.

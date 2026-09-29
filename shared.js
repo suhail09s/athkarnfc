@@ -1,9 +1,18 @@
 (function (root) {
     'use strict';
+    // `artist` and `artistAr` are only set where the recording's provenance is
+    // documented in assets/audio/SOURCES.md. Do not guess the others: the app
+    // must not credit a reciter it cannot substantiate.
     const TRACKS = [
-        { id: 'travel', title: 'دعاء السفر', audio: 'assets/audio/track1.mp3', data: 'assets/athkar/travel.json' },
-        { id: 'morning', title: 'أذكار الصباح', audio: 'assets/audio/track2.mp3', data: 'assets/athkar/morning_v2.json', fallback: 'assets/athkar/morning.json' },
-        { id: 'evening', title: 'أذكار المساء', audio: 'assets/audio/track3.mp3', data: 'assets/athkar/evening_audio.json', fallback: 'assets/athkar/evening.json' }
+        { id: 'travel', title: 'دعاء السفر', audio: 'assets/audio/track1.mp3',
+          data: 'assets/athkar/travel.json', artist: null, artistAr: null, source: null },
+        { id: 'morning', title: 'أذكار الصباح', audio: 'assets/audio/track2.mp3',
+          data: 'assets/athkar/morning_v2.json', fallback: 'assets/athkar/morning.json',
+          artist: null, artistAr: null, source: null },
+        { id: 'evening', title: 'أذكار المساء', audio: 'assets/audio/track3.mp3',
+          data: 'assets/athkar/evening_audio.json', fallback: 'assets/athkar/evening.json',
+          artist: 'Mishary Alafasy', artistAr: 'مشاري العفاسي',
+          source: 'https://islamhouse.com/ar/audios/327603/' }
     ];
     const SPEEDS = [1, 1.25, 1.5, 2];
     const DEFAULT_PREFERENCES = Object.freeze({
@@ -50,12 +59,15 @@
             return { ...item, segments };
         });
     }
+    // Resolves with the synchronized dataset, or with the reading-only fallback
+    // when that dataset fails. The two lists are not interchangeable, so the
+    // caller is told which one it received and can say so in the UI.
     async function loadTrack(track, fetcher = fetch) {
         for (const path of [track.data, track.fallback].filter(Boolean)) {
             try {
                 const response = await fetcher(path);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return normalizeData(await response.json());
+                return { items: normalizeData(await response.json()), usedFallback: path !== track.data, path };
             } catch (error) {
                 if (path === (track.fallback || track.data)) throw error;
             }

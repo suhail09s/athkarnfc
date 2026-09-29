@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;600;700&display=swap');
+/* Fonts are linked from the HTML so the browser can preconnect and the request
+   does not block this stylesheet. */
 
 /* Reset & Base */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }

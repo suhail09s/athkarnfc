@@ -1,6 +1,6 @@
 'use strict';
 importScripts('./shared.js');
-const SHELL_CACHE = 'athkarnfc-shell-v6';
+const SHELL_CACHE = 'athkarnfc-shell-v7';
 const AUDIO_CACHE = 'athkarnfc-audio-v2';
 const SHELL_ASSETS = [
     './', './index.html', './car.html', './style.css', './car.css',
@@ -25,13 +25,21 @@ self.addEventListener('activate', event => {
         await self.clients.claim();
     })());
 });
+// The stored body is read once per worker lifetime. Reading it for every range
+// request would copy the whole recording on each seek (the evening file is
+// about 24 MB).
+const audioBlobs = new Map();
+async function cachedAudio(url, cached) {
+    if (!audioBlobs.has(url)) audioBlobs.set(url, await cached.blob());
+    return audioBlobs.get(url);
+}
 async function audioResponse(request, url) {
     const cache = await caches.open(AUDIO_CACHE);
     const cached = await cache.match(url);
     if (!cached) return fetch(request); // Preserve the origin's range behavior.
     const header = request.headers.get('Range');
     if (!header) return cached;
-    const blob = await cached.blob();
+    const blob = await cachedAudio(url, cached);
     const range = Athkar.parseRange(header, blob.size);
     if (!range) return new Response(blob, { headers: cached.headers });
     if (range.unsatisfiable) return new Response(null, {
@@ -72,12 +80,16 @@ self.addEventListener('message', event => {
             const cache = await caches.open(AUDIO_CACHE);
             if (type === 'SAVE_AUDIO' && !await cache.match(url)) {
                 const response = await fetch(url);
-                if (response.status !== 200 || !response.headers.get('Content-Type')?.startsWith('audio/')) {
-                    throw new Error('Audio download failed');
-                }
+                const contentType = response.headers.get('Content-Type') || '';
+                // Some static hosts serve audio as application/octet-stream, so the
+                // allowlisted file extension is accepted as a fallback signal.
+                const audio = contentType.startsWith('audio/') || /\.(mp3|m4a|ogg|opus|wav)$/i.test(url);
+                if (response.status !== 200 || !audio) throw new Error('Audio download failed');
                 await cache.put(url, response); // Resolves only after the full body is stored.
+                audioBlobs.delete(url);
             } else if (type === 'REMOVE_AUDIO') {
                 await cache.delete(url);
+                audioBlobs.delete(url);
             }
             port.postMessage({ ok: true, saved: Boolean(await cache.match(url)) });
         } catch (error) {
