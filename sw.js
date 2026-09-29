@@ -1,6 +1,6 @@
 'use strict';
 importScripts('./shared.js');
-const SHELL_CACHE = 'athkarnfc-shell-v7';
+const SHELL_CACHE = 'athkarnfc-shell-v8';
 const AUDIO_CACHE = 'athkarnfc-audio-v2';
 const SHELL_ASSETS = [
     './', './index.html', './car.html', './style.css', './car.css',

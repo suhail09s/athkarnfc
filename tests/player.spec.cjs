@@ -83,6 +83,22 @@ for (const mode of ['normal', 'car']) {
     });
 }
 
+test('the preferred playback speed survives the browser discarding it', async ({ page }) => {
+    await page.goto('/?autoplay=travel');
+    const panel = page.locator('.track[data-track="0"]');
+    await panel.locator('.speed-btn').click(); // 1x -> 1.25x
+    await expect(panel.locator('.speed-btn')).toHaveText('1.25x');
+    await panel.locator('.play-pause-btn').click();
+    await expect.poll(() => panel.locator('audio').evaluate(audio => !audio.paused && audio.currentTime > 0)).toBeTruthy();
+    // Safari and iOS reset playbackRate when they take over playback, and the
+    // saved preference must win rather than silently returning to 1x.
+    await panel.locator('audio').evaluate(audio => { audio.playbackRate = 1; });
+    await expect.poll(() => panel.locator('audio').evaluate(audio => audio.playbackRate)).toBe(1.25);
+    // Reloading the media must not lose the preference either.
+    await panel.locator('audio').evaluate(audio => audio.load());
+    await panel.locator('.play-pause-btn').click();
+    await expect.poll(() => panel.locator('audio').evaluate(audio => !audio.paused && audio.playbackRate)).toBe(1.25);
+});
 test('morning remains usable when evening data is unavailable', async ({ page }) => {
     await page.route('**/assets/athkar/evening*.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
     await page.goto('/?autoplay=morning');

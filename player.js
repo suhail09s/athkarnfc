@@ -377,8 +377,16 @@
             host.append(source);
         }
         audio.preload = 'none';
-        audio.playbackRate = speed;
+        applyRate(audio);
         state.speedButton.textContent = `${speed}x`;
+        for (const type of ['loadedmetadata', 'canplay', 'playing', 'seeked']) {
+            audio.addEventListener(type, () => keepRate(state));
+        }
+        audio.addEventListener('ratechange', () => {
+            // Re-assert only while playing: a paused element can ignore the
+            // setter, and that also keeps this from looping.
+            if (!audio.paused) keepRate(state);
+        });
         state.play.addEventListener('click', () => audio.paused ? play(state) : audio.pause());
         panel.querySelector('.prev-btn').addEventListener('click', () => seekBy(state, -10));
         panel.querySelector('.next-btn').addEventListener('click', () => seekBy(state, 10));
@@ -479,11 +487,24 @@
     document.body.append(dialog);
     settingsButton.addEventListener('click', () => dialog.showModal());
     closeButton.addEventListener('click', () => dialog.close());
+    function applyRate(audio) {
+        // defaultPlaybackRate is what a reload resets playbackRate to, so both
+        // have to carry the preference.
+        audio.defaultPlaybackRate = speed;
+        audio.playbackRate = speed;
+    }
+    // Safari and iOS discard playbackRate when the browser takes over playback
+    // (after loading or a stall), which silently returns audio to 1x even
+    // though the preference is saved. Re-assert it wherever that can happen.
+    function keepRate(state) {
+        const { audio } = state;
+        if (audio.playbackRate === speed && audio.defaultPlaybackRate === speed) return;
+        applyRate(audio);
+    }
     function applyPreferences() {
         speed = preferences.speed;
         states.forEach(state => {
-            state.audio.defaultPlaybackRate = speed;
-            state.audio.playbackRate = speed;
+            applyRate(state.audio);
             state.speedButton.textContent = `${speed}x`;
             if (!preferences.autoScroll) state.lastChunk = null;
         });
