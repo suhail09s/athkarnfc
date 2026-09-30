@@ -15,9 +15,195 @@
           source: 'https://islamhouse.com/ar/audios/327603/' }
     ];
     const SPEEDS = [1, 1.25, 1.5, 2];
+    const LANGUAGES = ['ar', 'en'];
+    const THEMES = ['dark', 'light'];
+    const ACCENTS = ['violet', 'teal', 'amber', 'rose'];
+    const TEXT_SIZES = ['small', 'normal', 'large', 'xlarge'];
+    const FONTS = ['amiri', 'naskh', 'system'];
+    const STARTUPS = ['auto', 'last', 'travel', 'morning', 'evening'];
     const DEFAULT_PREFERENCES = Object.freeze({
-        autoplay: true, speed: 1, keepAwake: true, haptics: true, autoScroll: true
+        // The app is Arabic first; English is available from Settings.
+        language: 'ar',
+        theme: 'dark',
+        accent: 'violet',
+        textSize: 'normal',
+        font: 'amiri',
+        // The hour when evening prayers begin, using the device's local time.
+        switchHour: 12,
+        startup: 'auto',
+        autoplay: true,
+        speed: 1,
+        keepAwake: true,
+        haptics: true,
+        autoScroll: true
     });
+    // One flat dictionary per language. Every key must exist in both languages;
+    // the unit tests enforce that, and that the pages only ask for known keys.
+    const STRINGS = {
+        ar: {
+            appTitle: 'أذكار — AthkarNFC',
+            carPageTitle: 'أذكار السيارة',
+            tagline: 'اضغط على ذكر لعرضه، ثم شغّل للاستماع',
+            carModeLink: 'الوضع في السيارة',
+            exitCarMode: 'الخروج من وضع السيارة',
+            noscript: 'يتطلب AthkarNFC تشغيل JavaScript لعرض الأذكار وتشغيل الصوت.',
+            travelMeta: 'دعاء السفر',
+            morningMeta: 'أذكار الصباح',
+            eveningMeta: 'أذكار المساء',
+            settings: 'الإعدادات',
+            settingsClose: 'إغلاق',
+            groupAppearance: 'المظهر',
+            groupPlayback: 'القراءة والاستماع',
+            groupOpening: 'عند الفتح',
+            language: 'اللغة',
+            theme: 'المظهر العام',
+            themeDark: 'داكن',
+            themeLight: 'فاتح',
+            accent: 'اللون المميز',
+            accentViolet: 'بنفسجي',
+            accentTeal: 'فيروزي',
+            accentAmber: 'عنبري',
+            accentRose: 'وردي',
+            textSize: 'حجم خط الأذكار',
+            sizeSmall: 'صغير',
+            sizeNormal: 'عادي',
+            sizeLarge: 'كبير',
+            sizeXlarge: 'كبير جدًا',
+            font: 'نوع خط الأذكار',
+            fontAmiri: 'أميري',
+            fontNaskh: 'نسخ',
+            fontSystem: 'خط النظام',
+            switchHour: 'تبدأ أذكار المساء عند',
+            startup: 'الذكر الذي يُفتح عند التشغيل',
+            startupAuto: 'حسب وقت اليوم',
+            startupLast: 'آخر ذكر مفتوح',
+            settingsSchedule: 'قبل {time}: أذكار الصباح، ومن {time}: أذكار المساء، حسب توقيت جهازك.',
+            settingsHint: 'تُحفظ الإعدادات في هذا المتصفح وتُستخدم في الوضعين. وقد يتطلب بدء الصوت الضغط على تشغيل.',
+            settingsSaved: 'تم حفظ الإعدادات.',
+            settingsUnsaved: 'تعذر حفظ الإعدادات؛ ستُستخدم لهذه الجلسة فقط.',
+            settingsReset: 'إعادة الإعدادات الافتراضية',
+            settingsResetDone: 'تمت إعادة الإعدادات الافتراضية.',
+            autoplay: 'التشغيل التلقائي عند الفتح',
+            speed: 'سرعة التشغيل',
+            keepAwake: 'إبقاء الشاشة مضاءة أثناء التشغيل',
+            haptics: 'اهتزاز عند العد',
+            autoScroll: 'متابعة النص تلقائيًا',
+            play: 'تشغيل',
+            pause: 'إيقاف مؤقت',
+            ready: 'جاهز',
+            playing: 'قيد التشغيل',
+            paused: 'متوقف مؤقتًا',
+            failed: 'تعذر تشغيل الصوت. تحقق من اتصالك ثم حاول مجددًا.',
+            loadFailed: 'تعذر تحميل الأذكار.',
+            retry: 'إعادة المحاولة',
+            save: 'حفظ للاستماع دون اتصال',
+            remove: 'حذف النسخة المحفوظة',
+            saving: 'جارٍ الحفظ…',
+            saved: 'الصوت متاح دون اتصال',
+            saveFailed: 'تعذر الحفظ. تحقق من الاتصال والمساحة المتاحة.',
+            unavailable: 'الحفظ دون اتصال غير متاح حاليًا.',
+            count: 'تسجيل تكرار',
+            complete: 'مكتمل',
+            reset: 'إعادة العد',
+            remaining: 'متبقي',
+            manual: 'تستخدم أزرار التنقل توقيتًا تقديريًا لهذا التسجيل.',
+            tap: 'اضغط تشغيل لبدء الاستماع.',
+            fallback: 'تعذر تحميل النص المتزامن مع التسجيل، لذا تُعرض قائمة القراءة. وقد لا يتطابق ترتيبها وأعداد التكرار مع هذا التسجيل.',
+            previousPrayer: 'الذكر السابق',
+            nextPrayer: 'الذكر التالي',
+            prayerPages: 'صفحات الأذكار',
+            back10: 'رجوع ١٠ ثوانٍ',
+            forward10: 'تقديم ١٠ ثوانٍ',
+            playbackPosition: 'موضع التشغيل',
+            playbackSpeed: 'سرعة التشغيل',
+            audioCredit: 'مصدر التسجيل: IslamHouse — {artist}'
+        },
+        en: {
+            appTitle: 'AthkarNFC',
+            carPageTitle: 'Athkar Car Mode',
+            tagline: 'Tap a track to view prayer, tap play to listen',
+            carModeLink: 'Switch to Car Mode',
+            exitCarMode: 'Exit Car Mode',
+            noscript: 'AthkarNFC needs JavaScript to load the prayers and play audio.',
+            travelMeta: 'Travel Prayer',
+            morningMeta: 'Morning Remembrances',
+            eveningMeta: 'Evening Remembrances',
+            settings: 'Settings',
+            settingsClose: 'Close',
+            groupAppearance: 'Appearance',
+            groupPlayback: 'Reading and playback',
+            groupOpening: 'When opening',
+            language: 'Language',
+            theme: 'Theme',
+            themeDark: 'Dark',
+            themeLight: 'Light',
+            accent: 'Accent colour',
+            accentViolet: 'Violet',
+            accentTeal: 'Teal',
+            accentAmber: 'Amber',
+            accentRose: 'Rose',
+            textSize: 'Prayer text size',
+            sizeSmall: 'Small',
+            sizeNormal: 'Normal',
+            sizeLarge: 'Large',
+            sizeXlarge: 'Extra large',
+            font: 'Prayer font',
+            fontAmiri: 'Amiri',
+            fontNaskh: 'Naskh',
+            fontSystem: 'System',
+            switchHour: 'Evening prayers begin at',
+            startup: 'Prayer to open',
+            startupAuto: 'By time of day',
+            startupLast: 'Last opened',
+            settingsSchedule: 'Before {time}: morning prayers. From {time}: evening prayers, using your device’s local time.',
+            settingsHint: 'Settings are saved in this browser and shared by both modes. Your browser may still require a tap on Play.',
+            settingsSaved: 'Settings saved.',
+            settingsUnsaved: 'Could not save settings; changes apply to this session only.',
+            settingsReset: 'Reset to defaults',
+            settingsResetDone: 'Settings restored to their defaults.',
+            autoplay: 'Autoplay when opening',
+            speed: 'Playback speed',
+            keepAwake: 'Keep screen awake while playing',
+            haptics: 'Vibrate when counting',
+            autoScroll: 'Follow prayer text automatically',
+            play: 'Play track',
+            pause: 'Pause track',
+            ready: 'Ready',
+            playing: 'Playing',
+            paused: 'Paused',
+            failed: 'Playback failed. Check your connection and try again.',
+            loadFailed: 'Could not load prayers.',
+            retry: 'Retry',
+            save: 'Save offline',
+            remove: 'Remove offline audio',
+            saving: 'Saving…',
+            saved: 'Audio available offline',
+            saveFailed: 'Could not save audio. Check your connection and available storage.',
+            unavailable: 'Offline saving is unavailable right now.',
+            count: 'Count repetition',
+            complete: 'Complete',
+            reset: 'Reset count',
+            remaining: 'Remaining',
+            manual: 'Prayer navigation uses estimated positions for this recording.',
+            tap: 'Tap Play to start listening.',
+            fallback: 'Synchronized text is unavailable, so the reading list is shown. Its order and repetition counts may not match this recording.',
+            previousPrayer: 'Previous prayer',
+            nextPrayer: 'Next prayer',
+            prayerPages: 'Prayer pages',
+            back10: 'Back 10 seconds',
+            forward10: 'Forward 10 seconds',
+            playbackPosition: 'Playback position',
+            playbackSpeed: 'Playback speed',
+            audioCredit: 'Audio: {artist} · IslamHouse'
+        }
+    };
+    function formatText(template, values) {
+        return String(template).replace(/\{(\w+)\}/g, (match, key) =>
+            (values && key in values ? values[key] : match));
+    }
+    function stringsFor(language) {
+        return STRINGS[language] || STRINGS[DEFAULT_PREFERENCES.language];
+    }
     function normalizePreferences(value) {
         const result = { ...DEFAULT_PREFERENCES };
         if (!value || typeof value !== 'object' || Array.isArray(value)) return result;
@@ -25,15 +211,34 @@
             if (typeof value[key] === 'boolean') result[key] = value[key];
         }
         if (SPEEDS.includes(value.speed)) result.speed = value.speed;
+        for (const [key, allowed] of [
+            ['language', LANGUAGES], ['theme', THEMES], ['accent', ACCENTS],
+            ['textSize', TEXT_SIZES], ['font', FONTS], ['startup', STARTUPS]
+        ]) {
+            if (allowed.includes(value[key])) result[key] = value[key];
+        }
+        if (Number.isInteger(value.switchHour) && value.switchHour >= 0 && value.switchHour <= 23) {
+            result.switchHour = value.switchHour;
+        }
         return result;
     }
-    function timeTrack(date = new Date()) {
-        return date.getHours() < 12 ? 'morning' : 'evening';
+    function timeTrack(date = new Date(), switchHour = 12) {
+        const hour = Number.isInteger(switchHour) ? switchHour : 12;
+        return date.getHours() < hour ? 'morning' : 'evening';
     }
-    function startupTrack(requested, preferences, lastTrack, date = new Date()) {
+    // Precedence: an explicit track in the URL always wins, then ?autoplay=auto,
+    // then the saved "prayer to open" preference. `auto` keeps the documented
+    // behaviour of using the clock when autoplay is on and restoring the last
+    // opened prayer when autoplay is off.
+    function startupTrack(requested, preferences = {}, lastTrack, date = new Date()) {
+        const settings = preferences || {};
         if (TRACKS.some(track => track.id === requested)) return requested;
-        if (requested === 'auto' || preferences.autoplay) return timeTrack(date);
-        return TRACKS.some(track => track.id === lastTrack) ? lastTrack : timeTrack(date);
+        if (requested === 'auto') return timeTrack(date, settings.switchHour);
+        if (TRACKS.some(track => track.id === settings.startup)) return settings.startup;
+        if (settings.startup === 'last' || settings.autoplay === false) {
+            if (TRACKS.some(track => track.id === lastTrack)) return lastTrack;
+        }
+        return timeTrack(date, settings.switchHour);
     }
     function normalizeData(data) {
         if (!Array.isArray(data) || !data.length) throw new Error('Empty prayer data');
@@ -106,7 +311,9 @@
         if (start >= size || end < start || (suffix && Number(match[2]) === 0)) return { unsatisfiable: true };
         return { start, end };
     }
-    const api = { TRACKS, SPEEDS, DEFAULT_PREFERENCES, normalizePreferences, timeTrack, startupTrack, normalizeData, loadTrack, seekTime, formatTime, prayerCues, parseRange };
+    const api = { TRACKS, SPEEDS, LANGUAGES, THEMES, ACCENTS, TEXT_SIZES, FONTS, STARTUPS,
+        DEFAULT_PREFERENCES, STRINGS, stringsFor, formatText, normalizePreferences, timeTrack, startupTrack,
+        normalizeData, loadTrack, seekTime, formatTime, prayerCues, parseRange };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.Athkar = api;
 })(typeof globalThis !== 'undefined' ? globalThis : self);

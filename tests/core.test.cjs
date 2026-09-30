@@ -108,7 +108,7 @@ test('all referenced local page assets, shell assets and audio are deployable', 
     assert.ok(!assets.includes('.mp3'), 'Large audio must not block shell installation');
 });
 
-test('time-based startup switches exactly at local noon, including early morning', () => {
+test('time-based startup switches exactly at the switch hour, including early morning', () => {
     const { timeTrack, startupTrack, DEFAULT_PREFERENCES } = require('../shared.js');
     for (const [hour, minute, expected] of [[0, 0, 'morning'], [4, 59, 'morning'], [11, 59, 'morning'], [12, 0, 'evening'], [23, 59, 'evening']]) {
         const date = new Date(2026, 8, 23, hour, minute);
@@ -125,9 +125,54 @@ test('preferences validate saved values and tolerate corrupt or older records', 
     assert.deepEqual(normalizePreferences(null), DEFAULT_PREFERENCES);
     assert.deepEqual(normalizePreferences([]), DEFAULT_PREFERENCES);
     assert.deepEqual(normalizePreferences({ autoplay: 'false', speed: 99 }), DEFAULT_PREFERENCES);
-    assert.deepEqual(normalizePreferences({ autoplay: false, speed: 1.5, haptics: false }), {
-        autoplay: false, speed: 1.5, keepAwake: true, haptics: false, autoScroll: true
+    assert.deepEqual(normalizePreferences({autoplay: false, speed: 1.5, haptics: false}),
+        { ...DEFAULT_PREFERENCES, autoplay: false, speed: 1.5, haptics: false });
+});
+test('personalization preferences are validated and default safely', () => {
+    const { normalizePreferences, DEFAULT_PREFERENCES } = require('../shared.js');
+    assert.equal(DEFAULT_PREFERENCES.language, 'ar');
+    assert.deepEqual(normalizePreferences({
+        language: 'en', theme: 'light', accent: 'teal', textSize: 'xlarge', font: 'naskh',
+        switchHour: 18, startup: 'morning'
+    }), {
+        ...DEFAULT_PREFERENCES, language: 'en', theme: 'light', accent: 'teal',
+        textSize: 'xlarge', font: 'naskh', switchHour: 18, startup: 'morning'
     });
+    assert.deepEqual(normalizePreferences({
+        language: 'fr', theme: 'blue', accent: 'pink', textSize: 'huge', font: 'comic',
+        switchHour: 25, startup: 'fajr'
+    }), DEFAULT_PREFERENCES);
+    assert.equal(normalizePreferences({ switchHour: '12' }).switchHour, 12);
+    assert.equal(normalizePreferences({ switchHour: 5 }).switchHour, 5);
+    assert.equal(normalizePreferences({ switchHour: 0 }).switchHour, 0);
+});
+test('the switch hour and the startup prayer decide the opening track', () => {
+    const { timeTrack, startupTrack, DEFAULT_PREFERENCES } = require('../shared.js');
+    const afternoon = new Date(2026, 8, 23, 15, 0);
+    assert.equal(timeTrack(afternoon, 20), 'morning');
+    assert.equal(timeTrack(afternoon, 12), 'evening');
+    assert.equal(startupTrack(null, { ...DEFAULT_PREFERENCES, switchHour: 20 }, 'travel', afternoon), 'morning');
+    assert.equal(startupTrack(null, { ...DEFAULT_PREFERENCES, startup: 'travel' }, 'evening', afternoon), 'travel');
+    assert.equal(startupTrack(null, { ...DEFAULT_PREFERENCES, startup: 'last' }, 'travel', afternoon), 'travel');
+    assert.equal(startupTrack('morning', { ...DEFAULT_PREFERENCES, startup: 'travel' }, 'evening', afternoon), 'morning');
+    assert.equal(startupTrack('auto', { ...DEFAULT_PREFERENCES, startup: 'travel' }, 'evening', afternoon), 'evening');
+});
+test('both languages define the same strings and cover every page hook', () => {
+    const { STRINGS } = require('../shared.js');
+    const arabic = Object.keys(STRINGS.ar).sort();
+    assert.deepEqual(arabic, Object.keys(STRINGS.en).sort());
+    for (const key of arabic) {
+        assert.ok(STRINGS.ar[key].trim(), `Arabic text missing for ${key}`);
+        assert.ok(STRINGS.en[key].trim(), `English text missing for ${key}`);
+    }
+    // Every hook the pages use must exist, and the settings UI must offer only
+    // values the validator accepts (asserted in the browser suite).
+    for (const html of ['index.html', 'car.html']) {
+        const contents = fs.readFileSync(path.join(root, html), 'utf8');
+        for (const match of contents.matchAll(/data-i18n(?:-aria)?="([^"]+)"/g)) {
+            assert.ok(arabic.includes(match[1]), `Unknown interface string ${match[1]} in ${html}`);
+        }
+    }
 });
 
 test('prayer cues use transcript starts and estimate untimed recordings by text length', () => {

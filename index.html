@@ -1,24 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="format-detection" content="telephone=no">
-    <meta name="description" content="NFC audio player for Islamic remembrances with offline playback.">
+    <meta name="description" content="مشغّل أذكار صوتي يُفتح من وسم NFC، مع إمكانية الاستماع دون اتصال.">
     <meta name="theme-color" content="#1a1a24">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
-    <title>AthkarNFC</title>
+    <title>أذكار — AthkarNFC</title>
+    <script>
+        /* Applied before the stylesheets so the saved appearance is in place on
+           the first paint instead of flashing the defaults. Values are checked
+           here as well as in shared.js because this runs on its own. */
+        try {
+            var saved = JSON.parse(localStorage.getItem('athkarnfc_preferences_v1')) || {};
+            var root = document.documentElement;
+            var pick = function (key, allowed, fallback) {
+                return allowed.indexOf(saved[key]) >= 0 ? saved[key] : fallback;
+            };
+            root.dataset.theme = pick('theme', ['dark', 'light'], 'dark');
+            root.dataset.accent = pick('accent', ['violet', 'teal', 'amber', 'rose'], 'violet');
+            root.dataset.textSize = pick('textSize', ['small', 'normal', 'large', 'xlarge'], 'normal');
+            root.dataset.font = pick('font', ['amiri', 'naskh', 'system'], 'amiri');
+            if (pick('language', ['ar', 'en'], 'ar') === 'en') {
+                root.lang = 'en';
+                root.dir = 'ltr';
+            }
+        } catch (error) { /* the Arabic dark defaults already apply */ }
+    </script>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&family=Inter:wght@400;600;700&display=swap">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="player.css">
 </head>
 <body>
-    <noscript><p class="noscript">AthkarNFC needs JavaScript to load the prayers and play audio.</p></noscript>
+    <noscript><p class="noscript" data-i18n="noscript">يتطلب AthkarNFC تشغيل JavaScript لعرض الأذكار وتشغيل الصوت.</p></noscript>
     <div class="container" id="appContainer">
         <div class="card">
             
@@ -30,10 +50,10 @@
                     </svg>
                 </div>
                 <h1>AthkarNFC</h1>
-                <p>Tap a track to view prayer, tap play to listen</p>
-                <a href="car.html" class="car-mode-link" aria-label="Switch to Car Mode">
+                <p data-i18n="tagline">اضغط على ذكر لعرضه، ثم شغّل للاستماع</p>
+                <a href="car.html" class="car-mode-link" data-i18n-aria="carModeLink" aria-label="الوضع في السيارة">
                     <svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
-                    Switch to Car Mode
+                    <span data-i18n="carModeLink">الوضع في السيارة</span>
                 </a>
             </div>
 
@@ -48,7 +68,7 @@
                         </span>
                         <span class="track-info">
                             <span class="track-title" lang="ar" dir="rtl">دعاء السفر</span>
-                            <span class="track-meta">Travel Prayer</span>
+                            <span class="track-meta" data-i18n="travelMeta">دعاء السفر</span>
                         </span>
                         <span class="track-arrow">
                             <svg viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
@@ -59,21 +79,21 @@
                         <div class="carousel" id="carousel-0"></div>
                         
                         <div class="audio-player">
-                            <button class="skip-btn prev-btn" aria-label="Back 10 seconds"><span aria-hidden="true">−10</span>
+                            <button class="skip-btn prev-btn" data-i18n-aria="back10" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
                             </button>
-                            <button class="play-pause-btn" aria-label="Play Track">
+                            <button class="play-pause-btn" data-i18n-aria="play" aria-label="تشغيل">
                                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                             </button>
-                            <button class="skip-btn next-btn" aria-label="Forward 10 seconds"><span aria-hidden="true">+10</span>
+                            <button class="skip-btn next-btn" data-i18n-aria="forward10" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
                             </button>
                             <div class="progress-container">
-                                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" aria-label="Playback position" disabled>
+                                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" data-i18n-aria="playbackPosition" aria-label="موضع التشغيل" disabled>
                                 <div class="time-display">
                                     <span class="current-time">0:00</span>
                                     <span class="duration">0:00</span>
                                 </div>
                             </div>
-                            <button class="speed-btn" type="button" aria-label="Playback Speed">1x</button>
+                            <button class="speed-btn" type="button" data-i18n-aria="playbackSpeed" aria-label="سرعة التشغيل">1x</button>
                         </div>
                         <audio preload="none" src="assets/audio/track1.mp3"></audio>
                     </div>
@@ -87,7 +107,7 @@
                         </span>
                         <span class="track-info">
                             <span class="track-title" lang="ar" dir="rtl">أذكار الصباح</span>
-                            <span class="track-meta">Morning Remembrances</span>
+                            <span class="track-meta" data-i18n="morningMeta">أذكار الصباح</span>
                         </span>
                         <span class="track-arrow">
                             <svg viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
@@ -98,21 +118,21 @@
                         <div class="carousel" id="carousel-1"></div>
                         
                         <div class="audio-player">
-                            <button class="skip-btn prev-btn" aria-label="Back 10 seconds"><span aria-hidden="true">−10</span>
+                            <button class="skip-btn prev-btn" data-i18n-aria="back10" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
                             </button>
-                            <button class="play-pause-btn" aria-label="Play Track">
+                            <button class="play-pause-btn" data-i18n-aria="play" aria-label="تشغيل">
                                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                             </button>
-                            <button class="skip-btn next-btn" aria-label="Forward 10 seconds"><span aria-hidden="true">+10</span>
+                            <button class="skip-btn next-btn" data-i18n-aria="forward10" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
                             </button>
                             <div class="progress-container">
-                                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" aria-label="Playback position" disabled>
+                                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" data-i18n-aria="playbackPosition" aria-label="موضع التشغيل" disabled>
                                 <div class="time-display">
                                     <span class="current-time">0:00</span>
                                     <span class="duration">0:00</span>
                                 </div>
                             </div>
-                            <button class="speed-btn" type="button" aria-label="Playback Speed">1x</button>
+                            <button class="speed-btn" type="button" data-i18n-aria="playbackSpeed" aria-label="سرعة التشغيل">1x</button>
                         </div>
                         <audio preload="none" src="assets/audio/track2.mp3"></audio>
                     </div>
@@ -126,7 +146,7 @@
                         </span>
                         <span class="track-info">
                             <span class="track-title" lang="ar" dir="rtl">أذكار المساء</span>
-                            <span class="track-meta">Evening Remembrances</span>
+                            <span class="track-meta" data-i18n="eveningMeta">أذكار المساء</span>
                         </span>
                         <span class="track-arrow">
                             <svg viewBox="0 0 20 20"><path d="M6 4l8 6-8 6V4z"/></svg>
@@ -137,21 +157,21 @@
                         <div class="carousel" id="carousel-2"></div>
 
                         <div class="audio-player">
-                            <button class="skip-btn prev-btn" aria-label="Back 10 seconds"><span aria-hidden="true">−10</span>
+                            <button class="skip-btn prev-btn" data-i18n-aria="back10" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
                             </button>
-                            <button class="play-pause-btn" aria-label="Play Track">
+                            <button class="play-pause-btn" data-i18n-aria="play" aria-label="تشغيل">
                                 <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                             </button>
-                            <button class="skip-btn next-btn" aria-label="Forward 10 seconds"><span aria-hidden="true">+10</span>
+                            <button class="skip-btn next-btn" data-i18n-aria="forward10" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
                             </button>
                             <div class="progress-container">
-                                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" aria-label="Playback position" disabled>
+                                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" data-i18n-aria="playbackPosition" aria-label="موضع التشغيل" disabled>
                                 <div class="time-display">
                                     <span class="current-time">0:00</span>
                                     <span class="duration">0:00</span>
                                 </div>
                             </div>
-                            <button class="speed-btn" type="button" aria-label="Playback Speed">1x</button>
+                            <button class="speed-btn" type="button" data-i18n-aria="playbackSpeed" aria-label="سرعة التشغيل">1x</button>
                         </div>
                         <audio preload="none" src="assets/audio/track3.mp3"></audio>
                     </div>
@@ -162,7 +182,7 @@
             <!-- Status Footer -->
             <div class="status-bar" aria-live="polite">
                 <span class="status-dot" id="statusDot"></span>
-                <span class="status-text" id="statusText">Ready</span>
+                <span class="status-text" id="statusText" data-i18n="ready">جاهز</span>
             </div>
 
         </div>

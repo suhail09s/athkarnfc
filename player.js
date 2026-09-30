@@ -1,24 +1,11 @@
 (function () {
     'use strict';
-    const { TRACKS, SPEEDS, normalizePreferences, startupTrack, loadTrack, seekTime, formatTime, prayerCues } = Athkar;
+    const { TRACKS, SPEEDS, THEMES, ACCENTS, TEXT_SIZES, FONTS, STARTUPS,
+        stringsFor, formatText, normalizePreferences, startupTrack, loadTrack, seekTime, formatTime, prayerCues } = Athkar;
     const carMode = Boolean(document.querySelector('.car-content'));
-    const labels = carMode ? {
-        play: 'تشغيل', pause: 'إيقاف مؤقت', ready: 'جاهز', playing: 'قيد التشغيل', paused: 'متوقف مؤقتًا',
-        failed: 'تعذر تشغيل الصوت. تحقق من اتصالك ثم حاول مجددًا.', loadFailed: 'تعذر تحميل الأذكار.', retry: 'إعادة المحاولة',
-        save: 'حفظ للاستماع دون اتصال', remove: 'حذف النسخة المحفوظة', saving: 'جارٍ الحفظ…',
-        saved: 'الصوت متاح دون اتصال', saveFailed: 'تعذر الحفظ. تحقق من الاتصال والمساحة المتاحة.',
-        unavailable: 'الحفظ دون اتصال غير متاح حاليًا.', count: 'تسجيل تكرار', complete: 'مكتمل', reset: 'إعادة العد',
-        remaining: 'متبقي', manual: 'تستخدم أزرار التنقل توقيتًا تقديريًا لهذا التسجيل.', tap: 'اضغط تشغيل لبدء الاستماع.',
-        fallback: 'تعذر تحميل النص المتزامن مع التسجيل، لذا تُعرض قائمة القراءة. وقد لا يتطابق ترتيبها وأعداد التكرار مع هذا التسجيل.'
-    } : {
-        play: 'Play track', pause: 'Pause track', ready: 'Ready', playing: 'Playing', paused: 'Paused',
-        failed: 'Playback failed. Check your connection and try again.', loadFailed: 'Could not load prayers.', retry: 'Retry',
-        fallback: 'Synchronized text is unavailable, so the reading list is shown. Its order and repetition counts may not match this recording.',
-        save: 'Save offline', remove: 'Remove offline audio', saving: 'Saving…', saved: 'Audio available offline',
-        saveFailed: 'Could not save audio. Check your connection and available storage.', unavailable: 'Offline saving is unavailable right now.',
-        count: 'Count repetition', complete: 'Complete', reset: 'Reset count', remaining: 'Remaining',
-        manual: 'Prayer navigation uses estimated positions for this recording.', tap: 'Tap Play to start listening.'
-    };
+    // Interface strings follow the saved language rather than the mode. Arabic
+    // is used until the saved preferences below have been read.
+    let labels = stringsFor('ar');
     const storage = {
         get(key) { try { return localStorage.getItem(key); } catch (_) { return null; } },
         set(key, value) {
@@ -34,6 +21,7 @@
         storedPreferences = { speed: Number(storage.get('athkarnfc_audio_speed')) };
     }
     let preferences = normalizePreferences(storedPreferences);
+    labels = stringsFor(preferences.language);
     let speed = preferences.speed;
     const speeds = SPEEDS;
     let selected = null;
@@ -54,8 +42,12 @@
         if (text !== undefined) el.textContent = text;
         return el;
     }
-    function status(state, text, error = false) {
-        state.status.textContent = text;
+    // The key is remembered so a language change can re-apply the current
+    // status without knowing why it was set.
+    function status(state, key, error = false) {
+        state.statusKey = key;
+        state.statusError = error;
+        state.status.textContent = labels[key];
         state.status.classList.toggle('error', error);
     }
     async function updateWakeLock() {
@@ -133,7 +125,7 @@
         states.filter(other => other !== state).forEach(other => other.audio.pause());
         try { await state.audio.play(); }
         catch (error) {
-            if (error.name !== 'AbortError') status(state, labels.failed, true);
+            if (error.name !== 'AbortError') status(state, 'failed', true);
         }
     }
     // Cues depend only on the dataset and the media duration, so recomputing
@@ -218,6 +210,9 @@
         // Force the cues to be rebuilt for this dataset even if the duration
         // has not changed (for example when a retry succeeds).
         state.cues = null;
+        // Language-dependent text is refreshed through these closures, so a
+        // language change never rebuilds the cards and never resets a count.
+        state.countUpdaters = [];
         state.activePrayer = 0;
         state.content.replaceChildren();
         state.content.lang = 'ar';
@@ -241,6 +236,7 @@
             count.type = 'button';
             count.setAttribute('aria-live', 'polite');
             const reset = element('button', 'reset-count', labels.reset);
+            reset.dataset.i18n = 'reset';
             reset.type = 'button';
             reset.lang = carMode ? 'ar' : 'en';
             let remaining = item.repeatCount;
@@ -260,6 +256,7 @@
                 if (preferences.haptics && navigator.vibrate) navigator.vibrate(30);
             });
             reset.addEventListener('click', () => { remaining = item.repeatCount; updateCount(); count.focus(); });
+            state.countUpdaters.push(updateCount);
             updateCount();
             meta.append(count, reset, element('span', 'slide-counter', `${index + 1} / ${items.length}`));
             chunk.append(text, meta);
@@ -270,9 +267,12 @@
         if (!carMode) {
             state.navigation?.remove();
             const navigation = element('nav', 'prayer-navigation');
-            navigation.setAttribute('aria-label', 'Prayer pages');
-            const previous = element('button', 'prayer-previous', 'Previous prayer');
-            const next = element('button', 'prayer-next', 'Next prayer');
+            navigation.setAttribute('aria-label', labels.prayerPages);
+            navigation.dataset.i18nAria = 'prayerPages';
+            const previous = element('button', 'prayer-previous', labels.previousPrayer);
+            const next = element('button', 'prayer-next', labels.nextPrayer);
+            previous.dataset.i18n = 'previousPrayer';
+            next.dataset.i18n = 'nextPrayer';
             previous.type = next.type = 'button';
             function nearest() {
                 const edge = state.content.getBoundingClientRect().right;
@@ -316,7 +316,9 @@
             renderPrayers(state, items);
         } catch (_) {
             const message = element('div', 'load-error', labels.loadFailed);
+            message.dataset.i18n = 'loadFailed';
             const retry = element('button', 'retry-button', labels.retry);
+            retry.dataset.i18n = 'retry';
             retry.type = 'button';
             retry.addEventListener('click', () => loadPrayers(state));
             message.append(retry);
@@ -337,6 +339,11 @@
         });
     }
     let offlineWorker = null;
+    // Re-applied on a language change, and after a save or removal.
+    function updateOfflineText(state) {
+        state.offline.textContent = state.saved ? labels.remove : labels.save;
+        state.offlineStatus.textContent = state.saved ? labels.saved : '';
+    }
     async function refreshOffline() {
         if (!offlineWorker) return;
         await Promise.all(states.map(async state => {
@@ -344,8 +351,7 @@
                 const { saved } = await workerRequest(offlineWorker, 'AUDIO_STATUS', state.audio.getAttribute('src'));
                 state.saved = saved;
                 state.offline.disabled = false;
-                state.offline.textContent = saved ? labels.remove : labels.save;
-                state.offlineStatus.textContent = saved ? labels.saved : '';
+                updateOfflineText(state);
             } catch (_) { state.offlineStatus.textContent = labels.unavailable; }
         }));
     }
@@ -353,13 +359,17 @@
         const { panel, audio } = state;
         state.status = element('p', 'player-status', labels.ready);
         state.status.setAttribute('role', 'status');
+        state.statusKey = 'ready';
         state.note = element('p', 'transcript-note', labels.manual);
+        state.note.dataset.i18n = 'manual';
         state.note.hidden = true;
         state.sourceNote = element('p', 'transcript-note fallback-note', labels.fallback);
+        state.sourceNote.dataset.i18n = 'fallback';
         state.sourceNote.hidden = true;
         state.content.before(state.sourceNote, state.note);
         const actions = element('div', 'offline-actions');
         state.offline = element('button', 'offline-button', labels.save);
+        state.saved = false;
         state.offline.type = 'button';
         state.offline.disabled = true;
         state.offlineStatus = element('span', 'offline-status');
@@ -368,13 +378,11 @@
         const host = carMode ? panel : panel.querySelector('.track-content');
         host.append(state.status, actions);
         if (state.source) {
-            const credit = carMode
-                ? `مصدر التسجيل: IslamHouse — ${state.artistAr || state.artist}`
-                : `Audio: ${state.artist} · IslamHouse`;
-            const source = element('a', 'audio-source', credit);
-            source.href = state.source;
-            source.target = '_blank'; source.rel = 'noopener noreferrer';
-            host.append(source);
+            state.credit = element('a', 'audio-source');
+            state.credit.href = state.source;
+            state.credit.target = '_blank'; state.credit.rel = 'noopener noreferrer';
+            updateCredit(state);
+            host.append(state.credit);
         }
         audio.preload = 'none';
         applyRate(audio);
@@ -411,15 +419,15 @@
             // A delayed play event from a deselected track must never steal playback.
             if (selected !== state) { audio.pause(); return; }
             states.filter(other => other !== state).forEach(other => other.audio.pause());
-            status(state, labels.playing); updatePlayer(state); updateWakeLock();
+            status(state, 'playing'); updatePlayer(state); updateWakeLock();
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
         });
         audio.addEventListener('pause', () => {
-            status(state, audio.ended ? labels.ready : labels.paused); updatePlayer(state); updateWakeLock();
+            status(state, audio.ended ? 'ready' : 'paused'); updatePlayer(state); updateWakeLock();
             if (selected === state && 'mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
         });
-        audio.addEventListener('ended', () => { status(state, labels.ready); updatePlayer(state); updateWakeLock(); });
-        audio.addEventListener('error', () => { status(state, labels.failed, true); updatePlayer(state); updateWakeLock(); });
+        audio.addEventListener('ended', () => { status(state, 'ready'); updatePlayer(state); updateWakeLock(); });
+        audio.addEventListener('error', () => { status(state, 'failed', true); updatePlayer(state); updateWakeLock(); });
         state.offline.addEventListener('click', async () => {
             if (!offlineWorker) return;
             state.offline.disabled = true;
@@ -436,57 +444,94 @@
     }
     if (carMode) document.querySelectorAll('.tab-btn').forEach(button =>
         button.addEventListener('click', () => select(states.find(state => state.id === button.dataset.target))));
-    const settingsText = carMode ? {
-        title: 'الإعدادات', close: 'إغلاق', autoplay: 'التشغيل التلقائي عند الفتح',
-        schedule: 'قبل ١٢ ظهرًا: أذكار الصباح. من ١٢ ظهرًا: أذكار المساء، حسب توقيت جهازك.',
-        speed: 'سرعة التشغيل', keepAwake: 'إبقاء الشاشة مضاءة أثناء التشغيل',
-        haptics: 'اهتزاز عند العد', autoScroll: 'متابعة النص تلقائيًا',
-        hint: 'تُحفظ الإعدادات في هذا المتصفح وتُستخدم في الوضعين. قد يتطلب بدء الصوت الضغط على تشغيل.',
-        saved: 'تم حفظ الإعدادات.', unsaved: 'تعذر حفظ الإعدادات؛ ستُستخدم لهذه الجلسة فقط.'
-    } : {
-        title: 'Settings', close: 'Close', autoplay: 'Autoplay when opening',
-        schedule: 'Before noon: morning prayers. From noon: evening prayers, using your device’s local time.',
-        speed: 'Playback speed', keepAwake: 'Keep screen awake while playing',
-        haptics: 'Vibrate when counting', autoScroll: 'Follow prayer text automatically',
-        hint: 'Settings are saved in this browser and shared by both modes. Your browser may still require a tap on Play.',
-        saved: 'Settings saved.', unsaved: 'Could not save settings; changes apply to this session only.'
-    };
+    // Settings are described once and built from that description, so every
+    // option is stored, validated and re-applied in the same way.
+    const capitalize = value => String(value).charAt(0).toUpperCase() + String(value).slice(1);
+    const enumOptions = (values, prefix) => values.map(value => ({ value, labelKey: prefix + capitalize(value) }));
+    const STARTUP_LABELS = { auto: 'startupAuto', last: 'startupLast', travel: 'travelMeta', morning: 'morningMeta', evening: 'eveningMeta' };
+    const SETTINGS = [
+        { heading: 'groupAppearance', rows: [
+            { key: 'language', options: [{ value: 'ar', label: 'العربية' }, { value: 'en', label: 'English' }] },
+            { key: 'theme', options: enumOptions(THEMES, 'theme') },
+            { key: 'accent', options: enumOptions(ACCENTS, 'accent') },
+            { key: 'textSize', options: enumOptions(TEXT_SIZES, 'size') },
+            { key: 'font', options: enumOptions(FONTS, 'font') }
+        ] },
+        { heading: 'groupPlayback', rows: [
+            { key: 'speed', options: SPEEDS.map(value => ({ value, label: `${value}x` })) },
+            { key: 'keepAwake' }, { key: 'haptics' }, { key: 'autoScroll' }
+        ] },
+        { heading: 'groupOpening', rows: [
+            { key: 'autoplay' },
+            { key: 'switchHour', options: Array.from({ length: 24 }, (unused, hour) =>
+                ({ value: hour, label: `${String(hour).padStart(2, '0')}:00` })) },
+            { key: 'startup', options: STARTUPS.map(value => ({ value, labelKey: STARTUP_LABELS[value] })) }
+        ] }
+    ];
     const toolbar = element('div', 'settings-toolbar');
-    const settingsButton = element('button', 'settings-button', settingsText.title);
+    const settingsButton = element('button', 'settings-button', labels.settings);
     settingsButton.type = 'button';
+    settingsButton.dataset.i18n = 'settings';
     settingsButton.setAttribute('aria-haspopup', 'dialog');
     toolbar.append(settingsButton);
     document.body.prepend(toolbar);
     const dialog = element('dialog', 'settings-dialog');
     dialog.setAttribute('aria-labelledby', 'settings-title');
-    const heading = element('h2', '', settingsText.title);
+    const heading = element('h2', '', labels.settings);
     heading.id = 'settings-title';
-    const closeButton = element('button', 'settings-close', settingsText.close);
+    heading.dataset.i18n = 'settings';
+    const closeButton = element('button', 'settings-close', labels.settingsClose);
     closeButton.type = 'button';
-    dialog.append(heading, element('p', 'settings-hint', settingsText.schedule));
+    closeButton.dataset.i18n = 'settingsClose';
+    const scheduleHint = element('p', 'settings-hint');
+    dialog.append(heading, scheduleHint);
     const settingsInputs = {};
-    for (const key of ['autoplay', 'speed', 'keepAwake', 'haptics', 'autoScroll']) {
+    function addRow(row) {
         const label = element('label', 'settings-row');
-        const input = element(key === 'speed' ? 'select' : 'input');
-        input.id = `preference-${key}`;
-        if (key === 'speed') {
-            for (const value of speeds) {
-                const option = element('option', '', `${value}x`);
-                option.value = value;
-                input.append(option);
+        const name = element('span', '', labels[row.key]);
+        name.dataset.i18n = row.key;
+        const input = element(row.options ? 'select' : 'input');
+        input.id = `preference-${row.key}`;
+        if (row.options) {
+            for (const option of row.options) {
+                const node = element('option', '', option.labelKey ? labels[option.labelKey] : option.label);
+                node.value = option.value;
+                if (option.labelKey) node.dataset.i18n = option.labelKey;
+                input.append(node);
             }
         } else input.type = 'checkbox';
-        label.append(element('span', '', settingsText[key]), input);
+        label.append(name, input);
         dialog.append(label);
-        settingsInputs[key] = input;
-        input.addEventListener('change', () => savePreferences({ [key]: key === 'speed' ? Number(input.value) : input.checked }));
+        settingsInputs[row.key] = input;
+        input.addEventListener('change', () => savePreferences({
+            [row.key]: row.options
+                ? (typeof row.options[0].value === 'number' ? Number(input.value) : input.value)
+                : input.checked
+        }));
     }
+    for (const group of SETTINGS) {
+        const groupHeading = element('h3', 'settings-group', labels[group.heading]);
+        groupHeading.dataset.i18n = group.heading;
+        dialog.append(groupHeading);
+        group.rows.forEach(addRow);
+    }
+    const resetButton = element('button', 'settings-reset', labels.settingsReset);
+    resetButton.type = 'button';
+    resetButton.dataset.i18n = 'settingsReset';
     const settingsStatus = element('p', 'settings-status');
     settingsStatus.setAttribute('role', 'status');
-    dialog.append(element('p', 'settings-hint', settingsText.hint), settingsStatus, closeButton);
+    dialog.append(element('p', 'settings-hint', labels.settingsHint), settingsStatus, resetButton, closeButton);
     document.body.append(dialog);
     settingsButton.addEventListener('click', () => dialog.showModal());
     closeButton.addEventListener('click', () => dialog.close());
+    resetButton.addEventListener('click', () => {
+        storage.set(PREFERENCES_KEY, null);
+        storage.set('athkarnfc_audio_speed', null); // do not re-import the legacy value
+        preferences = normalizePreferences(null);
+        settingsStatus.dataset.i18n = 'settingsResetDone';
+        settingsStatus.textContent = labels.settingsResetDone;
+        applyPreferences();
+    });
     function applyRate(audio) {
         // defaultPlaybackRate is what a reload resets playbackRate to, so both
         // have to carry the preference.
@@ -501,6 +546,50 @@
         if (audio.playbackRate === speed && audio.defaultPlaybackRate === speed) return;
         applyRate(audio);
     }
+    // Language, appearance and every piece of state-dependent text. Everything
+    // here is driven by the saved preferences, so one call re-applies them all.
+    function applyLanguage() {
+        labels = stringsFor(preferences.language);
+        document.documentElement.lang = preferences.language;
+        document.documentElement.dir = preferences.language === 'ar' ? 'rtl' : 'ltr';
+        document.title = carMode ? labels.carPageTitle : labels.appTitle;
+        for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = labels[node.dataset.i18n];
+        for (const node of document.querySelectorAll('[data-i18n-aria]')) node.setAttribute('aria-label', labels[node.dataset.i18nAria]);
+    }
+    function applyAppearance() {
+        const root = document.documentElement;
+        root.dataset.theme = preferences.theme;
+        root.dataset.accent = preferences.accent;
+        root.dataset.textSize = preferences.textSize;
+        root.dataset.font = preferences.font;
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+            const light = preferences.theme === 'light';
+            meta.setAttribute('content', carMode
+                ? (light ? '#ffffff' : '#000000')
+                : (light ? '#eef0f6' : '#1a1a24'));
+        }
+    }
+    function updateScheduleHint() {
+        const time = `${String(preferences.switchHour).padStart(2, '0')}:00`;
+        scheduleHint.textContent = formatText(labels.settingsSchedule, { time });
+    }
+    function updateCredit(state) {
+        if (!state.credit) return;
+        const artist = preferences.language === 'ar' ? (state.artistAr || state.artist) : state.artist;
+        state.credit.textContent = formatText(labels.audioCredit, { artist });
+    }
+    function refreshOfflineText(state) {
+        if (!offlineWorker) { state.offlineStatus.textContent = labels.unavailable; return; }
+        updateOfflineText(state);
+    }
+    function refreshStateText(state) {
+        status(state, state.statusKey || 'ready', state.statusError);
+        state.countUpdaters?.forEach(update => update());
+        refreshOfflineText(state);
+        updateCredit(state);
+        updatePlayer(state);
+    }
     function applyPreferences() {
         speed = preferences.speed;
         states.forEach(state => {
@@ -509,15 +598,20 @@
             if (!preferences.autoScroll) state.lastChunk = null;
         });
         for (const [key, input] of Object.entries(settingsInputs)) {
-            if (key === 'speed') input.value = speed;
-            else input.checked = preferences[key];
+            if (input.type === 'checkbox') input.checked = preferences[key];
+            else input.value = String(preferences[key]);
         }
+        applyLanguage();
+        applyAppearance();
+        updateScheduleHint();
+        states.forEach(refreshStateText);
         updateWakeLock();
     }
     function savePreferences(changes) {
         preferences = normalizePreferences({ ...preferences, ...changes });
         const saved = storage.set(PREFERENCES_KEY, JSON.stringify(preferences));
-        settingsStatus.textContent = saved ? settingsText.saved : settingsText.unsaved;
+        settingsStatus.dataset.i18n = saved ? 'settingsSaved' : 'settingsUnsaved';
+        settingsStatus.textContent = labels[settingsStatus.dataset.i18n];
         applyPreferences();
     }
     window.addEventListener('storage', event => {
@@ -536,7 +630,7 @@
         // Only the Play button retries when a browser blocks automatic sound.
         initial.audio.play().catch(error => {
             if (selected === initial && error.name !== 'AbortError') {
-                status(initial, error.name === 'NotAllowedError' ? labels.tap : labels.failed, error.name !== 'NotAllowedError');
+                status(initial, error.name === 'NotAllowedError' ? 'tap' : 'failed', error.name !== 'NotAllowedError');
             }
         });
     }

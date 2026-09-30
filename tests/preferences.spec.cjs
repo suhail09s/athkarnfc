@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { STRINGS } = require('../shared.js');
 test.use({ timezoneId: 'Asia/Riyadh' });
 const key = 'athkarnfc_preferences_v1';
 async function recordAutoplay(page) {
@@ -33,7 +34,7 @@ test('autoplay opt-out and all settings survive reloads and switching modes', as
     await page.locator('#preference-autoplay').uncheck();
     await page.locator('#preference-speed').selectOption('1.5');
     for (const name of ['keepAwake', 'haptics', 'autoScroll']) await page.locator(`#preference-${name}`).uncheck();
-    await expect(page.locator('.settings-status')).toHaveText('Settings saved.');
+    await expect(page.locator('.settings-status')).toHaveText(STRINGS.ar.settingsSaved);
     await page.locator('.settings-close').click();
     for (const url of ['/?autoplay=travel', '/car.html?autoplay=auto', '/']) {
         await page.goto(url);
@@ -71,7 +72,7 @@ test('legacy speed is migrated and unavailable storage does not break playback c
     await page.reload();
     await page.locator('.settings-button').click();
     await page.locator('#preference-autoplay').uncheck();
-    await expect(page.locator('.settings-status')).toHaveText('Could not save settings; changes apply to this session only.');
+    await expect(page.locator('.settings-status')).toHaveText(STRINGS.ar.settingsUnsaved);
     await expect(page.locator('#preference-autoplay')).not.toBeChecked();
 });
 test('malformed preferences use safe defaults', async ({ page }) => {

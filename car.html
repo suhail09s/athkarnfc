@@ -8,21 +8,41 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
-    <title>Athkar Car Mode</title>
+    <title>أذكار السيارة</title>
+    <script>
+        /* Applied before the stylesheets so the saved appearance is in place on
+           the first paint instead of flashing the defaults. Values are checked
+           here as well as in shared.js because this runs on its own. */
+        try {
+            var saved = JSON.parse(localStorage.getItem('athkarnfc_preferences_v1')) || {};
+            var root = document.documentElement;
+            var pick = function (key, allowed, fallback) {
+                return allowed.indexOf(saved[key]) >= 0 ? saved[key] : fallback;
+            };
+            root.dataset.theme = pick('theme', ['dark', 'light'], 'dark');
+            root.dataset.accent = pick('accent', ['violet', 'teal', 'amber', 'rose'], 'violet');
+            root.dataset.textSize = pick('textSize', ['small', 'normal', 'large', 'xlarge'], 'normal');
+            root.dataset.font = pick('font', ['amiri', 'naskh', 'system'], 'amiri');
+            if (pick('language', ['ar', 'en'], 'ar') === 'en') {
+                root.lang = 'en';
+                root.dir = 'ltr';
+            }
+        } catch (error) { /* the Arabic dark defaults already apply */ }
+    </script>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&family=Inter:wght@400;700&display=swap">
     <link rel="stylesheet" href="car.css">
     <link rel="stylesheet" href="player.css">
 </head>
 <body>
-    <noscript><p class="noscript">يتطلب AthkarNFC تشغيل JavaScript لعرض الأذكار وتشغيل الصوت.</p></noscript>
+    <noscript><p class="noscript" data-i18n="noscript">يتطلب AthkarNFC تشغيل JavaScript لعرض الأذكار وتشغيل الصوت.</p></noscript>
     <header class="car-header">
         <nav class="car-tabs">
-            <button class="tab-btn" data-target="morning" aria-label="Morning Prayers">أذكار الصباح</button>
-            <button class="tab-btn" data-target="evening" aria-label="Evening Prayers">أذكار المساء</button>
-            <button class="tab-btn" data-target="travel" aria-label="Travel Prayer">دعاء السفر</button>
+            <button class="tab-btn" data-target="morning" data-i18n-aria="morningMeta" aria-label="أذكار الصباح">أذكار الصباح</button>
+            <button class="tab-btn" data-target="evening" data-i18n-aria="eveningMeta" aria-label="أذكار المساء">أذكار المساء</button>
+            <button class="tab-btn" data-target="travel" data-i18n-aria="travelMeta" aria-label="دعاء السفر">دعاء السفر</button>
         </nav>
-        <a href="index.html" class="exit-car-btn" aria-label="Exit Car Mode">
+        <a href="index.html" class="exit-car-btn" data-i18n-aria="exitCarMode" aria-label="الخروج من وضع السيارة">
             <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
         </a>
     </header>
@@ -32,17 +52,17 @@
         <section id="morning" class="tab-panel">
             <div class="prayer-text-container" id="morning-text"></div>
             <div class="audio-controls">
-                <button class="speed-btn" data-track="1" aria-label="Change Speed">1x</button>
-                <button class="skip-btn prev-btn" data-track="1" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
+                <button class="speed-btn" data-track="1" data-i18n-aria="playbackSpeed" aria-label="سرعة التشغيل">1x</button>
+                <button class="skip-btn prev-btn" data-track="1" data-i18n-aria="back10" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
                 </button>
                 <button class="play-pause-btn" data-track="1" aria-label="Play/Pause">
                     <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button class="skip-btn next-btn" data-track="1" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
+                <button class="skip-btn next-btn" data-track="1" data-i18n-aria="forward10" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
                 </button>
             </div>
             <div class="progress-bar-container">
-                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" aria-label="موضع التشغيل" disabled>
+                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" data-i18n-aria="playbackPosition" aria-label="موضع التشغيل" disabled>
                 <div class="time-readout"><span class="current-time">0:00</span> / <span class="duration">0:00</span></div>
             </div>
             <audio id="audio-1" preload="none" src="assets/audio/track2.mp3"></audio> <!-- Morning is track2 -->
@@ -52,17 +72,17 @@
         <section id="evening" class="tab-panel">
             <div class="prayer-text-container" id="evening-text"></div>
             <div class="audio-controls">
-                <button class="speed-btn" data-track="2" aria-label="Change Speed">1x</button>
-                <button class="skip-btn prev-btn" data-track="2" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
+                <button class="speed-btn" data-track="2" data-i18n-aria="playbackSpeed" aria-label="سرعة التشغيل">1x</button>
+                <button class="skip-btn prev-btn" data-track="2" data-i18n-aria="back10" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
                 </button>
                 <button class="play-pause-btn" data-track="2" aria-label="Play/Pause">
                     <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button class="skip-btn next-btn" data-track="2" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
+                <button class="skip-btn next-btn" data-track="2" data-i18n-aria="forward10" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
                 </button>
             </div>
             <div class="progress-bar-container">
-                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" aria-label="موضع التشغيل" disabled>
+                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" data-i18n-aria="playbackPosition" aria-label="موضع التشغيل" disabled>
                 <div class="time-readout"><span class="current-time">0:00</span> / <span class="duration">0:00</span></div>
             </div>
             <audio id="audio-2" preload="none" src="assets/audio/track3.mp3"></audio> <!-- Evening is track3 -->
@@ -72,17 +92,17 @@
         <section id="travel" class="tab-panel">
             <div class="prayer-text-container" id="travel-text"></div>
             <div class="audio-controls">
-                <button class="speed-btn" data-track="0" aria-label="Change Speed">1x</button>
-                <button class="skip-btn prev-btn" data-track="0" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
+                <button class="speed-btn" data-track="0" data-i18n-aria="playbackSpeed" aria-label="سرعة التشغيل">1x</button>
+                <button class="skip-btn prev-btn" data-track="0" data-i18n-aria="back10" aria-label="رجوع ١٠ ثوانٍ"><span aria-hidden="true">−10</span>
                 </button>
                 <button class="play-pause-btn" data-track="0" aria-label="Play/Pause">
                     <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button class="skip-btn next-btn" data-track="0" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
+                <button class="skip-btn next-btn" data-track="0" data-i18n-aria="forward10" aria-label="تقديم ١٠ ثوانٍ"><span aria-hidden="true">+10</span>
                 </button>
             </div>
             <div class="progress-bar-container">
-                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" aria-label="موضع التشغيل" disabled>
+                <input class="progress-bar" type="range" min="0" max="100" value="0" step="0.1" data-i18n-aria="playbackPosition" aria-label="موضع التشغيل" disabled>
                 <div class="time-readout"><span class="current-time">0:00</span> / <span class="duration">0:00</span></div>
             </div>
             <audio id="audio-0" preload="none" src="assets/audio/track1.mp3"></audio> <!-- Travel is track1 -->

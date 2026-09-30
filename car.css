@@ -4,8 +4,8 @@
 :root {
     --bg-color: #000000;
     --surface: #121212;
-    --primary: #5856d6;
-    --primary-dim: rgba(88, 86, 214, 0.2);
+    --primary: var(--accent-1);
+    --primary-dim: var(--accent-soft);
     --text-main: #ffffff;
     --text-dim: #a0a0a0;
     --hitbox: 72px; /* Minimum 64px, pushing to 72px for perfect car glances */
@@ -64,7 +64,7 @@ body {
 /* Prayer Text Container */
 .prayer-text-container {
     flex: 1; overflow-y: auto; padding-bottom: 40px;
-    font-family: 'Amiri', serif; font-size: 38px; line-height: 1.8; /* Huge text */
+    font-family: var(--prayer-font); font-size: calc(38px * var(--prayer-scale)); line-height: 1.8;
     text-align: right;
     scrollbar-width: none;
 }
@@ -92,10 +92,10 @@ body {
 }
 .play-pause-btn {
     width: 90px; height: 90px; border-radius: 50%;
-    background: linear-gradient(135deg, #5856d6, #af52de);
+    background: var(--accent-gradient-2);
     border: none; color: white;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; box-shadow: 0 8px 24px rgba(88, 86, 214, 0.4);
+    cursor: pointer; box-shadow: 0 8px 24px var(--accent-soft);
 }
 .play-pause-btn svg { width: 44px; height: 44px; fill: currentColor; }
 
@@ -122,5 +122,5 @@ body {
 
 /* Sync Spans */
 .sync-span { transition: color 0.2s ease, text-shadow 0.2s ease; }
-.sync-span.active-sync { color: var(--primary); text-shadow: 0 0 12px rgba(88,86,214,0.4); font-weight: bold; }
+.sync-span.active-sync { color: var(--accent-2); text-shadow: 0 0 12px var(--accent-soft); font-weight: bold; }
 

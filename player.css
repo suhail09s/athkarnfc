@@ -2,7 +2,7 @@
 button, input, a { touch-action: manipulation; }
 button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid #cbb3ff; outline-offset: 4px; }
 [hidden] { display: none !important; }
-input.progress-bar { appearance: auto; accent-color: #af52de; min-width: 40px; height: 32px; margin: 0; direction: ltr; }
+input.progress-bar { appearance: auto; accent-color: var(--accent-2); min-width: 40px; height: 32px; margin: 0; direction: ltr; }
 .progress-container { min-width: 40px; }
 .time-display, .time-readout { direction: ltr; }
 .skip-btn { font-size: 15px; font-weight: 700; }
@@ -18,6 +18,89 @@ button:disabled { opacity: .65; cursor: default; }
 .player-status { margin: 10px 0; }
 .player-status.error { color: #ffb5b5; }
 .offline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 8px 0; }
+/* ---------------------------------------------------------------------------
+   Personalisation. The saved theme, accent, prayer text size and font arrive as
+   data attributes on <html>, set before the first paint.
+   --------------------------------------------------------------------------- */
+:root {
+    --accent-1: #5856d6;
+    --accent-2: #af52de;
+    --accent-3: #d6368c;
+    --accent-soft: rgba(88, 86, 214, .2);
+    --accent-border: rgba(88, 86, 214, .4);
+    --accent-gradient: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 50%, var(--accent-3) 100%);
+    --accent-gradient-2: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    --prayer-font: 'Amiri', serif;
+    --prayer-scale: 1;
+}
+[data-accent="teal"] { --accent-1: #0f8f84; --accent-2: #22b3a2; --accent-3: #4fd1b5; --accent-soft: rgba(15, 143, 132, .2); --accent-border: rgba(34, 179, 162, .45); }
+[data-accent="amber"] { --accent-1: #b8760f; --accent-2: #e09a2b; --accent-3: #f2c14e; --accent-soft: rgba(184, 118, 15, .2); --accent-border: rgba(224, 154, 43, .45); }
+[data-accent="rose"] { --accent-1: #b3174f; --accent-2: #e04a7f; --accent-3: #f27ba3; --accent-soft: rgba(179, 23, 79, .2); --accent-border: rgba(224, 74, 127, .45); }
+[data-text-size="small"] { --prayer-scale: .85; }
+[data-text-size="large"] { --prayer-scale: 1.15; }
+[data-text-size="xlarge"] { --prayer-scale: 1.3; }
+[data-font="naskh"] { --prayer-font: 'Noto Naskh Arabic', 'Amiri', serif; }
+[data-font="system"] { --prayer-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+/* Light theme. Car mode exposes its palette as custom properties, so overriding
+   those covers it; the normal reader is overridden per surface. */
+[data-theme="light"] {
+    --bg-color: #eef0f6;
+    --surface: #ffffff;
+    --text-main: #14141c;
+    --text-dim: #5b5b6e;
+}
+[data-theme="light"] body { background: #eef0f6; color: #14141c; }
+[data-theme="light"] .card { background: #ffffff; border-color: rgba(20, 20, 40, .07); box-shadow: 0 8px 32px rgba(20, 20, 50, .08); }
+[data-theme="light"] .header p { color: #5b5b6e; }
+[data-theme="light"] .car-mode-link { background: rgba(20, 20, 40, .06); color: #14141c; border-color: rgba(20, 20, 40, .1); }
+[data-theme="light"] .track { background: #f4f5fa; border-color: rgba(20, 20, 40, .06); }
+[data-theme="light"] .track-number { background: #e6e7f0; }
+[data-theme="light"] .track-number svg { fill: #8a8aa0; }
+[data-theme="light"] .track-title { color: #14141c; }
+[data-theme="light"] .track-meta { color: #71718a; }
+/* The meta line translates the Arabic title, so it is only useful off Arabic. */
+html:lang(ar) .track-meta { display: none; }
+[data-theme="light"] .track-arrow svg { fill: #b9b9cc; }
+[data-theme="light"] .slide { background: #ffffff; border-color: rgba(20, 20, 40, .06); }
+[data-theme="light"] .slide-content { color: #1d1d28; }
+[data-theme="light"] .slide-meta { color: #5b5b6e; border-top-color: rgba(20, 20, 40, .06); }
+[data-theme="light"] .audio-player { background: #f4f5fa; box-shadow: 0 -4px 16px rgba(20, 20, 50, .07); }
+[data-theme="light"] .progress-bar { background: #dfe1ec; }
+[data-theme="light"] .skip-btn, [data-theme="light"] .speed-btn { background: rgba(20, 20, 40, .06); border-color: rgba(20, 20, 40, .08); color: #2a2a3a; }
+[data-theme="light"] .time-display { color: #5b5b6e; }
+[data-theme="light"] .status-text { color: #71718a; }
+[data-theme="light"] .container.focus-mode .track-btn { background: rgba(255, 255, 255, .95); }
+[data-theme="light"] .player-status, [data-theme="light"] .offline-status, [data-theme="light"] .transcript-note { color: #565669; }
+[data-theme="light"] .repeat-badge, [data-theme="light"] .reset-count, [data-theme="light"] .offline-button,
+[data-theme="light"] .retry-button, [data-theme="light"] .prayer-navigation button,
+[data-theme="light"] .settings-button, [data-theme="light"] .settings-close {
+    background: #eceef6; color: #23232f; border-color: #c9cbdd;
+}
+[data-theme="light"] .repeat-badge[aria-disabled="true"] { background: #dff3e6; color: #1c6b3a; }
+[data-theme="light"] .settings-toolbar { background: #eef0f6; }
+[data-theme="light"] .settings-dialog { background: #ffffff; color: #14141c; border-color: #c9cbdd; }
+[data-theme="light"] .settings-dialog::backdrop { background: rgba(20, 20, 40, .45); }
+[data-theme="light"] .settings-hint, [data-theme="light"] .settings-status { color: #565669; }
+[data-theme="light"] .settings-row { border-bottom-color: #e2e4ee; }
+[data-theme="light"] .settings-row select { background: #eceef6; color: #14141c; border-color: #c9cbdd; }
+[data-theme="light"] .settings-group { color: #565669; }
+[data-theme="light"] .audio-source { color: #5a3fb8; }
+[data-theme="light"] .fallback-note { color: #8a5a00; }
+[data-theme="light"] .noscript { color: #a11; }
+[data-theme="light"] .car-header { background: var(--surface); border-bottom-color: #d8dae6; }
+[data-theme="light"] .exit-car-btn { background: #e6e7f0; border-left-color: #d8dae6; }
+[data-theme="light"] .prayer-chunk { background: rgba(20, 20, 40, .04); border-color: rgba(20, 20, 40, .06); }
+[data-theme="light"] .prayer-chunk.active-sync { background: var(--accent-soft); color: #14141c; }
+[data-theme="light"] .audio-controls { background: var(--surface); border-color: #e2e4ee; }
+[data-theme="light"] .time-readout { color: var(--text-dim); }
+[data-theme="light"] button:focus-visible, [data-theme="light"] input:focus-visible, [data-theme="light"] a:focus-visible {
+    outline-color: var(--accent-1);
+}
+/* Settings groups */
+.settings-group { margin: 18px 0 4px; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: #9a9ab0; text-transform: uppercase; }
+.settings-group:first-of-type { margin-top: 4px; }
+
 .audio-source { display: inline-block; color: #cbb3ff; font-size: 13px; margin: 8px 0; }
 .transcript-note { margin: 8px 0 16px; }
 .load-error { padding: 20px; }
@@ -39,7 +122,7 @@ button:disabled { opacity: .65; cursor: default; }
     .audio-controls .skip-btn, .audio-controls .speed-btn { width: 52px; height: 52px; flex-shrink: 0; }
     .tab-btn { font-size: 1rem; }
     .exit-car-btn { width: 44px; flex-shrink: 0; }
-    .prayer-text-container { font-size: 28px; }
+    .prayer-text-container { font-size: calc(28px * var(--prayer-scale)); }
     .prayer-chunk { padding: 12px; }
     .progress-bar-container { gap: 12px; padding: 0; }
     .time-readout { font-size: 1rem; }
@@ -68,7 +151,8 @@ body:has(.container) { flex-direction: column; align-items: center; }
 .settings-dialog h2 { margin: 0 0 12px; font-size: 22px; }
 .settings-hint, .settings-status { font-size: 14px; color: #bcbccd; margin: 12px 0; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 48px; padding: 8px 0; border-bottom: 1px solid #353544; cursor: pointer; }
-.settings-row input { width: 24px; height: 24px; accent-color: #af52de; flex-shrink: 0; }
+.settings-row select { max-width: 58%; }
+.settings-row input { width: 24px; height: 24px; accent-color: var(--accent-2); flex-shrink: 0; }
 .settings-row select { min-height: 40px; padding: 6px; background: #29243c; color: #fff; border: 1px solid #666680; border-radius: 6px; font: inherit; }
 .settings-row select:focus-visible { outline: 3px solid #cbb3ff; outline-offset: 3px; }
 /* Shown when the synchronized dataset failed and the reading list is used. */

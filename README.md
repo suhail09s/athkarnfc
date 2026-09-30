@@ -1,19 +1,19 @@
 # AthkarNFC
 
-A small Arabic prayer reader and audio player opened from an NFC tag. Built with HTML, CSS and vanilla JavaScript; no runtime framework or build step. The site is published to GitHub Pages by GitHub Actions.
+A small Arabic prayer reader and audio player opened from an NFC tag. Built with HTML, CSS and vanilla JavaScript; no runtime framework or build step. The interface is Arabic by default and can be switched to English, and every option is stored in the browser. The site is published to GitHub Pages by GitHub Actions.
 
 ## Use
 
-On opening, autoplay selects morning prayers before 12:00 noon and evening prayers from 12:00 noon, using the device's local time. Autoplay is enabled by default and can be turned off in Settings. Only one recording plays at a time. Both normal and car modes offer ten-second seeking, playback speed, keyboard-accessible progress sliders, and repetition buttons with reset. Normal mode adds Previous and Next prayer buttons, which move one prayer at a time from the card being read, even while the text is still scrolling into place. Counts are stored as numbers in the prayer data; display labels do not determine behavior.
+On opening, autoplay selects morning prayers before the switch hour and evening prayers from it, using the device's local time. The switch hour is 12:00 noon unless it is changed in Settings. Autoplay is enabled by default and can be turned off in Settings. Only one recording plays at a time. Both normal and car modes offer ten-second seeking, playback speed, keyboard-accessible progress sliders, and repetition buttons with reset. Normal mode adds Previous and Next prayer buttons, which move one prayer at a time from the card being read, even while the text is still scrolling into place. Counts are stored as numbers in the prayer data; display labels do not determine behavior. The interface language is a setting: Arabic by default, English on request. It also sets the page direction, so English mode reads left to right, while the prayer text and the car-mode tab names stay Arabic and right to left.
 
 NFC tags can point to:
 
 - `/` — normal reader.
 - `/car.html` — larger controls.
 - `/?autoplay=travel`, `/?autoplay=morning`, `/?autoplay=evening`.
-- `/car.html?autoplay=auto` — morning from 00:00 through 11:59 in the device's local time, otherwise evening.
+- `/car.html?autoplay=auto` — morning before the switch hour in the device's local time, otherwise evening.
 
-When autoplay is enabled, playback is attempted on opening, but browsers may require pressing Play after navigation. A saved autoplay opt-out is respected even when an NFC URL contains `autoplay=...`; that URL still selects the requested prayer. Explicit travel/morning/evening links override the time-based selection without changing the saved preference. Invalid query values fall back to the normal startup behavior. No unrelated tap starts audio. The app does not interrupt an ongoing session when noon arrives. The time-based selection is a convenience, not a calculation of local prayer times.
+When autoplay is enabled, playback is attempted on opening, but browsers may require pressing Play after navigation. A saved autoplay opt-out is respected even when an NFC URL contains `autoplay=...`; that URL still selects the requested prayer. Explicit travel/morning/evening links override both the time-based selection and the saved prayer to open, without changing either preference. Invalid query values fall back to the normal startup behavior. No unrelated tap starts audio. The app does not interrupt an ongoing session when the switch hour arrives. The time-based selection is a convenience, not a calculation of local prayer times.
 
 ## Synchronized text and fallbacks
 
@@ -28,17 +28,34 @@ The synchronized datasets follow the recording, so they contain what the reciter
 
 ## Saved preferences
 
-The Settings button stays available in both modes, including the focused reader. Preferences are stored locally in this browser and shared across normal and car modes:
+The Settings button stays available in both modes, including the focused reader, and the dialog groups its options into appearance, reading and opening. Preferences are stored locally in this browser and shared across normal and car modes.
 
-- Autoplay when opening (default: on).
-- Playback speed: 1x, 1.25x, 1.5x or 2x (default: 1x).
+Interface and appearance:
+
+- Language: Arabic (default) or English. It sets the page direction and every label, message and accessible name.
+- Theme: dark (default) or light.
+- Accent colour: violet (default), teal, amber or rose.
+- Prayer text size: small, normal (default), large or extra large.
+- Prayer font: Amiri (default), Naskh or the system font.
+
+Reading and playback:
+
+- Playback speed: 1x (default), 1.25x, 1.5x or 2x.
 - Keep screen awake while playing (default: on, where supported).
 - Vibrate when counting (default: on, where supported).
 - Follow synchronized prayer text automatically (default: on).
 
-Changes apply immediately except autoplay, which applies on the next opening. Changing speed in the player also updates the saved setting. Existing speed preferences from older versions are preserved. With autoplay off, opening the app restores the last selected prayer without playing it; an explicit NFC selection takes precedence. Preferences are validated, and unavailable browser storage falls back to session-only settings with a visible message. Settings changes in another open tab update controls without starting audio.
+When opening:
 
-Preferences are not synced across browsers or devices and are lost if site storage is cleared. Counts reset on a page reload; playback position is not persisted. Screen wake lock is requested only during playback when enabled and released on pause, close or completion where the browser supports it.
+- Autoplay when opening (default: on).
+- The hour when evening prayers begin, 00:00 to 23:00 (default: 12:00), in the device's local time.
+- Prayer to open: by time of day (default), the last opened prayer, or one fixed prayer.
+
+**Reset to defaults** clears the saved record, so the values above apply again and any later change to those defaults is picked up.
+
+Every value is validated when it is read: an unknown or out-of-range value falls back to its default, so a corrupt or older record cannot break the app. Changes apply immediately, except autoplay, which applies on the next opening. Changing speed in the player also updates the saved setting, and existing speed preferences from older versions are preserved. With the prayer to open set to by time of day and autoplay off, opening the app restores the last selected prayer without playing it; an explicit NFC selection takes precedence. Preferences are not synced across browsers or devices and are lost if site storage is cleared. Unavailable browser storage falls back to session-only settings with a visible message. Settings changes in another open tab update the controls without starting audio.
+
+Changing the language does not rebuild the prayer cards, so repetition counts survive it. Counts still reset on a page reload, and playback position is not persisted. Screen wake lock is requested only during playback when enabled and released on pause, close or completion where the browser supports it.
 
 ## Offline use
 

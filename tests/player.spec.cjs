@@ -2,6 +2,7 @@ const { test: base, expect } = require('@playwright/test');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const { once } = require('node:events');
+const { STRINGS } = require('../shared.js');
 const test = base.extend({
     offlineOrigin: async ({}, use) => {
         const server = spawn(process.execPath, [path.join(__dirname, 'server.cjs')], { env: { ...process.env, PORT: '0' } });
@@ -56,7 +57,7 @@ for (const mode of ['normal', 'car']) {
         const panel = page.locator(mode === 'car' ? '#travel' : '.track[data-track="0"]');
         await expect(panel.locator('.offline-button')).toBeEnabled();
         await panel.locator('.offline-button').click();
-        await expect(panel.locator('.offline-status')).toHaveText(mode === 'car' ? 'الصوت متاح دون اتصال' : 'Audio available offline');
+        await expect(panel.locator('.offline-status')).toHaveText(STRINGS.ar.saved);
         await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBeTruthy();
         // Stop the actual origin in both engines. WebKit's offline emulation
         // rejects even cached service-worker responses on macOS; shutting down
@@ -79,7 +80,7 @@ for (const mode of ['normal', 'car']) {
         await expect.poll(() => panel.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(30);
         await expect(panel.locator('.offline-button')).toBeEnabled();
         await panel.locator('.offline-button').click();
-        await expect(panel.locator('.offline-button')).toHaveText(mode === 'car' ? 'حفظ للاستماع دون اتصال' : 'Save offline');
+        await expect(panel.locator('.offline-button')).toHaveText(STRINGS.ar.save);
     });
 }
 
@@ -99,26 +100,34 @@ test('the preferred playback speed survives the browser discarding it', async ({
     await panel.locator('.play-pause-btn').click();
     await expect.poll(() => panel.locator('audio').evaluate(audio => !audio.paused && audio.playbackRate)).toBe(1.25);
 });
-test('morning remains usable when evening data is unavailable', async ({ page }) => {
-    await page.route('**/assets/athkar/evening*.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
-    await page.goto('/?autoplay=morning');
-    await expect(page.locator('#carousel-1 .repeat-badge')).toHaveCount(13);
-    await expect(page.locator('#carousel-2 .retry-button')).toHaveCount(1);
-});
-test('the reading list is labelled when the synchronized dataset fails', async ({ page }) => {
-    await page.route('**/assets/athkar/morning_v2.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
-    await page.goto('/?autoplay=morning');
-    const morning = page.locator('.track[data-track="1"]');
-    await expect(morning.locator('.repeat-badge')).toHaveCount(31);
-    await expect(morning.locator('.fallback-note')).toBeVisible();
-    await expect(morning.locator('.fallback-note')).toHaveText(/reading list/);
+// Routing cannot intercept a request the service worker answers from its own
+// cache, and the worker caches these datasets, so the worker is blocked here:
+// otherwise a worker that is already controlling the page serves the data and
+// the simulated failure never reaches the app.
+test.describe('dataset failures', () => {
+    test.use({ serviceWorkers: 'block' });
+
+    test('morning remains usable when evening data is unavailable', async ({ page }) => {
+        await page.route('**/assets/athkar/evening*.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+        await page.goto('/?autoplay=morning');
+        await expect(page.locator('#carousel-1 .repeat-badge')).toHaveCount(13);
+        await expect(page.locator('#carousel-2 .retry-button')).toHaveCount(1);
+    });
+    test('the reading list is labelled when the synchronized dataset fails', async ({ page }) => {
+        await page.route('**/assets/athkar/morning_v2.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+        await page.goto('/?autoplay=morning');
+        const morning = page.locator('.track[data-track="1"]');
+        await expect(morning.locator('.repeat-badge')).toHaveCount(31);
+        await expect(morning.locator('.fallback-note')).toBeVisible();
+        await expect(morning.locator('.fallback-note')).toHaveText(STRINGS.ar.fallback);
+    });
 });
 test('blocked autoplay does not hijack closing or switching tracks', async ({ page }) => {
     await page.addInitScript(() => {
         HTMLMediaElement.prototype.play = function () { return Promise.reject(new DOMException('Blocked', 'NotAllowedError')); };
     });
     await page.goto('/?autoplay=travel');
-    await expect(page.locator('.track.open .player-status')).toHaveText('Tap Play to start listening.');
+    await expect(page.locator('.track.open .player-status')).toHaveText(STRINGS.ar.tap);
     await page.locator('.track.open .track-btn').click();
     await expect(page.locator('.track.open')).toHaveCount(0);
 });
@@ -191,5 +200,5 @@ test('worker rejects unknown audio paths and still saves allowed recordings', as
     });
     expect(result.ok).toBe(false);
     await panel.locator('.offline-button').click();
-    await expect(panel.locator('.offline-status')).toHaveText('Audio available offline');
+    await expect(panel.locator('.offline-status')).toHaveText(STRINGS.ar.saved);
 });
