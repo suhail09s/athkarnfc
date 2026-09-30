@@ -93,6 +93,46 @@ test('the evening opening card is the reviewed Ayat al-Kursi text', () => {
         .join('').split(/\s+/).filter(Boolean);
     assert.equal(unvowelled(displayed).slice(5).join(' '), 'الله لا اله الا هو الحي القيوم لا تاخذه سنة ولا نوم له ما في السموت وما في الارض من ذا الذي يشفع عنده الا باذنه يعلم ما بين ايديهم وما خلفهم ولا يحيطون بشيء من علمه الا بما شاء وسع كرسيه السموت والارض ولا يوده حفظهما وهو العلي العظيم ٢٥٥');
 });
+test('the three surah cards number their ayahs as the sources do', () => {
+    const data = JSON.parse(fs.readFileSync(path.join(root, 'assets/athkar/evening_audio.json')));
+    const items = data[0].dhikr_items;
+    // Words per ayah, taken from the two sources this change was copied from.
+    const surahs = [
+        { reference: '[سورة الإخلاص - ١١٢]', words: [4, 2, 4, 5], cards: [1, 4, 7] },
+        { reference: '[سورة الفلق - ١١٣]', words: [4, 4, 5, 5, 5], cards: [2, 5, 8] },
+        { reference: '[سورة الناس - ١١٤]', words: [4, 2, 2, 4, 5, 3], cards: [3, 6, 9] }
+    ];
+    const digits = '١٢٣٤٥٦';
+    const unvowelled = value => Array.from(value)
+        .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0653-\u0655]/.test(character))
+        .map(character => ('ٱأإآ'.includes(character) ? 'ا' : character === '\u0649' ? 'ي' : character))
+        .join('').split(/\s+/).filter(Boolean);
+    for (const surah of surahs) {
+        for (const index of surah.cards) {
+            const segments = items[index].segments;
+            assert.equal(items[index].reference, surah.reference);
+            const openings = segments.filter(segment => segment.opening);
+            assert.equal(openings.length, 1);
+            assert.equal(openings[0], segments[0]);
+            assert.equal(openings[0].text.split(/\s+/).length, 4, 'the opening is the basmala');
+            assert.equal(digits.split('').some(digit => openings[0].text.includes(digit)), false);
+            // Every ayah's number must follow exactly that ayah's words.
+            const tokens = unvowelled(segments.filter(segment => !segment.opening)
+                .map(segment => segment.text).join(' '));
+            let cursor = 0;
+            for (const [position, count] of surah.words.entries()) {
+                for (let step = 0; step < count; step++) {
+                    assert.ok(tokens[cursor] !== undefined, `ayah ${position + 1} is short`);
+                    assert.equal(digits.includes(tokens[cursor]), false, 'a number sits inside ayah words');
+                    cursor++;
+                }
+                assert.equal(tokens[cursor], digits[position], `ayah ${position + 1} is not numbered in place`);
+                cursor++;
+            }
+            assert.equal(cursor, tokens.length, 'extra text after the last ayah number');
+        }
+    }
+});
 test('an invalid citation or opening mark is rejected', () => {
     const { normalizeData } = require('../shared.js');
     const page = items => [{ dhikr_items: items }];

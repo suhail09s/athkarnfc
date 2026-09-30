@@ -122,6 +122,39 @@ test('the refuge phrase is set apart from the ayah it precedes', async ({ page }
     // The refuge phrase still follows the recording.
     expect(await opening.locator('.sync-span').getAttribute('data-start')).toBe('1.56');
 });
+test('the surah cards separate the basmala and number their ayahs', async ({ page }) => {
+    await page.goto('/?autoplay=evening');
+    await expect(page.locator('#carousel-2 .repeat-badge')).toHaveCount(32);
+    const surahs = [
+        { reference: '[سورة الإخلاص - ١١٢]', numbers: ['١', '٢', '٣', '٤'] },
+        { reference: '[سورة الفلق - ١١٣]', numbers: ['١', '٢', '٣', '٤', '٥'] },
+        { reference: '[سورة الناس - ١١٤]', numbers: ['١', '٢', '٣', '٤', '٥', '٦'] }
+    ];
+    for (const [offset, surah] of surahs.entries()) {
+        const card = page.locator('#carousel-2 .slide').nth(offset + 1);
+        const opening = card.locator('.prayer-opening');
+        // The basmala is set apart, centred and coloured, and carries no number.
+        // The words are compared unvowelled: the data's copy orders the combining
+        // marks differently from any literal typed into a test.
+        const openingWords = await opening.evaluate(node => Array.from(node.textContent)
+            .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0653-\u0655]/.test(character))
+            .map(character => ('ٱأإآ'.includes(character) ? 'ا' : character === '\u0649' ? 'ي' : character))
+            .join('').split(/\s+/).filter(Boolean));
+        expect(openingWords).toEqual(['بسم', 'الله', 'الرحمن', 'الرحيم']);
+        const style = await opening.evaluate(node => ({
+            align: getComputedStyle(node).textAlign,
+            colour: getComputedStyle(node).color,
+            ayahColour: getComputedStyle(node.parentElement).color
+        }));
+        expect(style.align).toBe('center');
+        expect(style.colour).not.toBe(style.ayahColour);
+        // Every ayah is numbered, in order, inside the ayah text.
+        const ayahWords = (await card.locator('.prayer-ayah').innerText()).split(/\s+/);
+        const numbers = ayahWords.filter(word => /^[١-٦]+$/.test(word));
+        expect(numbers).toEqual(surah.numbers);
+        await expect(card.locator('.prayer-reference')).toHaveText(surah.reference);
+    }
+});
 // Routing cannot intercept a request the service worker answers from its own
 // cache, and the worker caches these datasets, so the worker is blocked here:
 // otherwise a worker that is already controlling the page serves the data and
