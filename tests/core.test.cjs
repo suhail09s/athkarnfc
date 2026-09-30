@@ -66,6 +66,23 @@ test('the preview server has a content type for every published asset', () => {
         assert.ok(types[path.extname(asset)], `No content type for ${asset}`);
     }
 });
+test('the evening opening card is the reviewed Ayat al-Kursi text', () => {
+    const data = JSON.parse(fs.readFileSync(path.join(root, 'assets/athkar/evening_audio.json')));
+    const item = data[0].dhikr_items[0];
+    // The card renders the segments, so they have to agree with the stored text.
+    const displayed = item.segments.map(segment => segment.text).join(' ');
+    assert.equal(displayed, item.text);
+    assert.equal(item.segments.length, 9);
+    assert.ok(displayed.startsWith('أَعُوذُ بِٱللَّهِ مِنَ ٱلشَّيْطَانِ ٱلرَّجِيمِ'), 'the refuge phrase is kept');
+    assert.ok(displayed.endsWith('٢٥٥'), 'the ayah number is shown');
+    assert.deepEqual('ۚ ۖ ۗ'.split(' ').map(mark => displayed.split(mark).length - 1), [5, 2, 1]);
+    // The unvowelled wording must not change silently.
+    const unvowelled = value => Array.from(value)
+        .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0653-\u0655]/.test(character))
+        .map(character => ('ٱأإآ'.includes(character) ? 'ا' : character === '\u0649' ? 'ي' : character))
+        .join('').split(/\s+/).filter(Boolean);
+    assert.equal(unvowelled(displayed).slice(5).join(' '), 'الله لا اله الا هو الحي القيوم لا تاخذه سنة ولا نوم له ما في السموت وما في الارض من ذا الذي يشفع عنده الا باذنه يعلم ما بين ايديهم وما خلفهم ولا يحيطون بشيء من علمه الا بما شاء وسع كرسيه السموت والارض ولا يوده حفظهما وهو العلي العظيم ٢٥٥');
+});
 test('invalid data and exhausted fallbacks are reported', async () => {
     assert.throws(() => normalizeData([]));
     assert.throws(() => normalizeData([{ dhikr_items: [{ text: 'test', repeatCount: 0 }] }]));
