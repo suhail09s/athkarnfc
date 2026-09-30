@@ -223,13 +223,26 @@
             const chunk = element('div', carMode ? 'prayer-chunk' : 'slide');
             const text = element('div', carMode ? 'chunk-text' : 'slide-content');
             if (item.segments.length) {
-                for (const [i, segment] of item.segments.entries()) {
-                    if (i) text.append(' ');
+                const ayah = element('div', 'prayer-ayah');
+                let ayahStarted = false;
+                for (const segment of item.segments) {
                     const span = element('span', 'sync-span', segment.text);
                     span.dataset.start = segment.start;
                     span.dataset.end = segment.end;
-                    text.append(span);
+                    if (segment.opening) {
+                        // Not part of the prayer text: centred above it, in its own
+                        // colour, while its sync span still follows the recording.
+                        const opening = element('div', 'prayer-opening');
+                        opening.append(span);
+                        text.append(opening);
+                        continue;
+                    }
+                    if (ayahStarted) ayah.append(' ');
+                    ayahStarted = true;
+                    ayah.append(span);
                 }
+                text.append(ayah);
+                if (item.reference) text.append(element('div', 'prayer-reference', item.reference));
             } else text.textContent = item.text;
             const meta = element('div', 'slide-meta');
             const count = element('button', 'repeat-badge');

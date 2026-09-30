@@ -100,6 +100,28 @@ test('the preferred playback speed survives the browser discarding it', async ({
     await panel.locator('.play-pause-btn').click();
     await expect.poll(() => panel.locator('audio').evaluate(audio => !audio.paused && audio.playbackRate)).toBe(1.25);
 });
+test('the refuge phrase is set apart from the ayah it precedes', async ({ page }) => {
+    await page.goto('/?autoplay=evening');
+    await expect(page.locator('#carousel-2 .repeat-badge')).toHaveCount(32);
+    const card = page.locator('#carousel-2 .slide').first();
+    const opening = card.locator('.prayer-opening');
+    await expect(opening).toContainText('أَعُوذُ بِٱللَّهِ مِنَ ٱلشَّيْطَانِ ٱلرَّجِيم');
+    // Neither element contains the other's text, so they cannot read as one ayah.
+    await expect(card.locator('.prayer-ayah')).not.toContainText('أَعُوذُ');
+    await expect(opening).not.toContainText('ٱلْقَيُّومُ');
+    // Centred, and coloured differently from the ayah.
+    const style = await opening.evaluate(node => ({
+        align: getComputedStyle(node).textAlign,
+        colour: getComputedStyle(node).color,
+        ayahColour: getComputedStyle(node.parentElement).color
+    }));
+    expect(style.align).toBe('center');
+    expect(style.colour).not.toBe(style.ayahColour);
+    // The citation sits under the ayah.
+    await expect(card.locator('.prayer-reference')).toHaveText('[آية الكرسي - البقرة ٢٥٥]');
+    // The refuge phrase still follows the recording.
+    expect(await opening.locator('.sync-span').getAttribute('data-start')).toBe('1.56');
+});
 // Routing cannot intercept a request the service worker answers from its own
 // cache, and the worker caches these datasets, so the worker is blocked here:
 // otherwise a worker that is already controlling the page serves the data and

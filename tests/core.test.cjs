@@ -73,6 +73,16 @@ test('the evening opening card is the reviewed Ayat al-Kursi text', () => {
     const displayed = item.segments.map(segment => segment.text).join(' ');
     assert.equal(displayed, item.text);
     assert.equal(item.segments.length, 9);
+    // The refuge phrase is marked as separate from the prayer text, and it is the
+    // only segment carrying that mark, so the two cannot be read as one ayah.
+    const openings = item.segments.filter(segment => segment.opening);
+    assert.equal(openings.length, 1);
+    assert.equal(openings[0], item.segments[0]);
+    assert.equal(openings[0].text, 'أَعُوذُ بِٱللَّهِ مِنَ ٱلشَّيْطَانِ ٱلرَّجِيمِ');
+    assert.equal(item.segments.slice(1).filter(segment => segment.text.includes('أَعُوذُ')).length, 0);
+    // The citation shown under the card.
+    assert.ok(item.reference.includes('آية الكرسي - البقرة'), item.reference);
+    assert.ok(item.reference.endsWith('٢٥٥]'), item.reference);
     assert.ok(displayed.startsWith('أَعُوذُ بِٱللَّهِ مِنَ ٱلشَّيْطَانِ ٱلرَّجِيمِ'), 'the refuge phrase is kept');
     assert.ok(displayed.endsWith('٢٥٥'), 'the ayah number is shown');
     assert.deepEqual('ۚ ۖ ۗ'.split(' ').map(mark => displayed.split(mark).length - 1), [5, 2, 1]);
@@ -82,6 +92,18 @@ test('the evening opening card is the reviewed Ayat al-Kursi text', () => {
         .map(character => ('ٱأإآ'.includes(character) ? 'ا' : character === '\u0649' ? 'ي' : character))
         .join('').split(/\s+/).filter(Boolean);
     assert.equal(unvowelled(displayed).slice(5).join(' '), 'الله لا اله الا هو الحي القيوم لا تاخذه سنة ولا نوم له ما في السموت وما في الارض من ذا الذي يشفع عنده الا باذنه يعلم ما بين ايديهم وما خلفهم ولا يحيطون بشيء من علمه الا بما شاء وسع كرسيه السموت والارض ولا يوده حفظهما وهو العلي العظيم ٢٥٥');
+});
+test('an invalid citation or opening mark is rejected', () => {
+    const { normalizeData } = require('../shared.js');
+    const page = items => [{ dhikr_items: items }];
+    assert.throws(() => normalizeData(page([{ text: 'x', repeatCount: 1, reference: 5 }])), /Invalid prayer reference/);
+    assert.throws(() => normalizeData(page([{ text: 'x', repeatCount: 1, reference: '   ' }])), /Invalid prayer reference/);
+    assert.throws(() => normalizeData(page([{ text: 'x', repeatCount: 1,
+        segments: [{ start: 0, end: 1, text: 'x', opening: 'yes' }] }])), /Invalid transcript segment/);
+    const valid = normalizeData(page([{ text: 'x', repeatCount: 1, reference: '[a]',
+        segments: [{ start: 0, end: 1, text: 'x', opening: true }] }]));
+    assert.equal(valid[0].reference, '[a]');
+    assert.equal(valid[0].segments[0].opening, true);
 });
 test('invalid data and exhausted fallbacks are reported', async () => {
     assert.throws(() => normalizeData([]));

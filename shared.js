@@ -252,11 +252,21 @@
                 !Number.isInteger(item.repeatCount) || item.repeatCount < 1) {
                 throw new Error('Invalid prayer item');
             }
+            // Optional citation printed under the card, for example
+            // "[آية الكرسي - البقرة ٢٥٥]".
+            if (item.reference !== undefined && (typeof item.reference !== 'string' || !item.reference.trim())) {
+                throw new Error('Invalid prayer reference');
+            }
             const segments = item.segments || [];
             let end = 0;
             for (const segment of segments) {
                 if (!Number.isFinite(segment.start) || !Number.isFinite(segment.end) ||
                     segment.start < end || segment.end <= segment.start || typeof segment.text !== 'string') {
+                    throw new Error('Invalid transcript segment');
+                }
+                // A segment marked `opening` is not part of the prayer text: the
+                // card shows it on its own, for example the refuge phrase.
+                if (segment.opening !== undefined && typeof segment.opening !== 'boolean') {
                     throw new Error('Invalid transcript segment');
                 }
                 end = segment.end;

@@ -104,6 +104,29 @@ html:lang(ar) .track-meta { display: none; }
 .audio-source { display: inline-block; color: #cbb3ff; font-size: 13px; margin: 8px 0; }
 .transcript-note { margin: 8px 0 16px; }
 .load-error { padding: 20px; }
+/* A segment marked `opening` is not part of the prayer text: it is centred above
+   it, in the accent colour, with a hairline separating the two. */
+.prayer-opening {
+    display: block;
+    text-align: center;
+    color: var(--accent-2);
+    font-size: .72em;
+    line-height: 1.9;
+    max-width: 92%;
+    margin: 0 auto 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--accent-border);
+}
+/* Citation under a card, for example [آية الكرسي - البقرة ٢٥٥]. */
+.prayer-reference {
+    display: block;
+    text-align: center;
+    font-size: .66em;
+    color: #8a8aa0;
+    margin-top: 14px;
+}
+[data-theme="light"] .prayer-opening { color: var(--accent-1); }
+[data-theme="light"] .prayer-reference { color: #6b6b80; }
 .retry-button { display: block; margin-top: 12px; }
 .carousel { cursor: auto; }
 .carousel:active { cursor: auto; }
