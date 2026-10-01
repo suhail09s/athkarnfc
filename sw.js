@@ -1,12 +1,12 @@
 'use strict';
 importScripts('./shared.js');
-const SHELL_CACHE = 'athkarnfc-shell-v13';
+const SHELL_CACHE = 'athkarnfc-shell-v14';
 const AUDIO_CACHE = 'athkarnfc-audio-v2';
 const SHELL_ASSETS = [
     './', './index.html', './car.html', './style.css', './car.css',
     './shared.js', './player.js', './player.css', './manifest.json', './assets/icons/icon.svg',
     './assets/athkar/travel.json', './assets/athkar/morning.json',
-    './assets/athkar/morning_v2.json', './assets/athkar/evening.json',
+    './assets/athkar/morning_audio.json', './assets/athkar/evening.json',
     './assets/athkar/evening_audio.json'
 ];
 const absolute = path => new URL(path, self.registration.scope).href;

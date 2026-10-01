@@ -168,11 +168,11 @@ test.describe('dataset failures', () => {
     test('morning remains usable when evening data is unavailable', async ({ page }) => {
         await page.route('**/assets/athkar/evening*.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
         await page.goto('/?autoplay=morning');
-        await expect(page.locator('#carousel-1 .repeat-badge')).toHaveCount(13);
+        await expect(page.locator('#carousel-1 .repeat-badge')).toHaveCount(29);
         await expect(page.locator('#carousel-2 .retry-button')).toHaveCount(1);
     });
     test('the reading list is labelled when the synchronized dataset fails', async ({ page }) => {
-        await page.route('**/assets/athkar/morning_v2.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
+        await page.route('**/assets/athkar/morning_audio.json', route => route.fulfill({ status: 503, body: 'Unavailable' }));
         await page.goto('/?autoplay=morning');
         const morning = page.locator('.track[data-track="1"]');
         await expect(morning.locator('.repeat-badge')).toHaveCount(31);
@@ -198,7 +198,7 @@ test('small screens have no horizontal overflow in either mode', async ({ page }
         const morning = url.startsWith('/car')
             ? page.locator('#morning .repeat-badge')
             : page.locator('#carousel-1 .repeat-badge');
-        await expect(morning).toHaveCount(13);
+        await expect(morning).toHaveCount(29);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
     }
 });
@@ -211,7 +211,7 @@ test('prayer navigation preserves counts and switching pauses the old recording'
         'athkarnfc_preferences_v1', JSON.stringify({ autoplay: false, speed: 1 })));
     await page.goto('/?autoplay=morning');
     const morning = page.locator('.track[data-track="1"]');
-    await expect(morning.locator('.repeat-badge')).toHaveCount(13);
+    await expect(morning.locator('.repeat-badge')).toHaveCount(29);
     await expect(morning.locator('.prayer-previous')).toBeDisabled();
     await morning.locator('.prayer-next').click();
     await expect(morning.locator('.prayer-previous')).toBeEnabled();
