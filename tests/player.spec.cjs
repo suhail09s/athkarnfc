@@ -126,9 +126,10 @@ test('the surah cards separate the basmala and number their ayahs', async ({ pag
     await page.goto('/?autoplay=evening');
     await expect(page.locator('#carousel-2 .repeat-badge')).toHaveCount(32);
     const surahs = [
-        { reference: '[سورة الإخلاص - ١١٢]', numbers: ['١', '٢', '٣', '٤'] },
-        { reference: '[سورة الفلق - ١١٣]', numbers: ['١', '٢', '٣', '٤', '٥'] },
-        { reference: '[سورة الناس - ١١٤]', numbers: ['١', '٢', '٣', '٤', '٥', '٦'] }
+        { reference: '[سورة الإخلاص - ١١٢]', numbers: ['\u06DD١', '\u06DD٢', '\u06DD٣', '\u06DD٤'] },
+        { reference: '[سورة الفلق - ١١٣]', numbers: ['\u06DD١', '\u06DD٢', '\u06DD٣', '\u06DD٤', '\u06DD٥'] },
+        { reference: '[سورة الناس - ١١٤]',
+          numbers: ['\u06DD١', '\u06DD٢', '\u06DD٣', '\u06DD٤', '\u06DD٥', '\u06DD٦'] }
     ];
     for (const [offset, surah] of surahs.entries()) {
         const card = page.locator('#carousel-2 .slide').nth(offset + 1);
@@ -148,9 +149,11 @@ test('the surah cards separate the basmala and number their ayahs', async ({ pag
         }));
         expect(style.align).toBe('center');
         expect(style.colour).not.toBe(style.ayahColour);
-        // Every ayah is numbered, in order, inside the ayah text.
-        const ayahWords = (await card.locator('.prayer-ayah').innerText()).split(/\s+/);
-        const numbers = ayahWords.filter(word => /^[١-٦]+$/.test(word));
+        // Every ayah is numbered, in order, inside the ayah text, each number
+        // preceded by the end-of-ayah mark (U+06DD); textContent is used because
+        // the mark is a format character that innerText may not preserve.
+        const ayahWords = await card.locator('.prayer-ayah').evaluate(node => node.textContent.split(/\s+/));
+        const numbers = ayahWords.filter(word => /^\u06DD[١-٦]+$/.test(word));
         expect(numbers).toEqual(surah.numbers);
         await expect(card.locator('.prayer-reference')).toHaveText(surah.reference);
     }

@@ -84,14 +84,15 @@ test('the evening opening card is the reviewed Ayat al-Kursi text', () => {
     assert.ok(item.reference.includes('آية الكرسي - البقرة'), item.reference);
     assert.ok(item.reference.endsWith('٢٥٥]'), item.reference);
     assert.ok(displayed.startsWith('أَعُوذُ بِٱللَّهِ مِنَ ٱلشَّيْطَانِ ٱلرَّجِيمِ'), 'the refuge phrase is kept');
-    assert.ok(displayed.endsWith('٢٥٥'), 'the ayah number is shown');
+    assert.ok(displayed.endsWith('\u06DD٢٥٥'), 'the ayah number is shown with its end-of-ayah mark');
+    assert.equal(displayed.includes(' ٢٥٥'), false, 'the number is not left unmarked');
     assert.deepEqual('ۚ ۖ ۗ'.split(' ').map(mark => displayed.split(mark).length - 1), [5, 2, 1]);
     // The unvowelled wording must not change silently.
     const unvowelled = value => Array.from(value)
-        .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0653-\u0655]/.test(character))
+        .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DE-\u06ED\u0640\u0653-\u0655]/.test(character))
         .map(character => ('ٱأإآ'.includes(character) ? 'ا' : character === '\u0649' ? 'ي' : character))
         .join('').split(/\s+/).filter(Boolean);
-    assert.equal(unvowelled(displayed).slice(5).join(' '), 'الله لا اله الا هو الحي القيوم لا تاخذه سنة ولا نوم له ما في السموت وما في الارض من ذا الذي يشفع عنده الا باذنه يعلم ما بين ايديهم وما خلفهم ولا يحيطون بشيء من علمه الا بما شاء وسع كرسيه السموت والارض ولا يوده حفظهما وهو العلي العظيم ٢٥٥');
+    assert.equal(unvowelled(displayed).slice(5).join(' '), 'الله لا اله الا هو الحي القيوم لا تاخذه سنة ولا نوم له ما في السموت وما في الارض من ذا الذي يشفع عنده الا باذنه يعلم ما بين ايديهم وما خلفهم ولا يحيطون بشيء من علمه الا بما شاء وسع كرسيه السموت والارض ولا يوده حفظهما وهو العلي العظيم \u06DD٢٥٥');
 });
 test('the three surah cards number their ayahs as the sources do', () => {
     const data = JSON.parse(fs.readFileSync(path.join(root, 'assets/athkar/evening_audio.json')));
@@ -104,7 +105,7 @@ test('the three surah cards number their ayahs as the sources do', () => {
     ];
     const digits = '١٢٣٤٥٦';
     const unvowelled = value => Array.from(value)
-        .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u0653-\u0655]/.test(character))
+        .filter(character => !/[\u064B-\u065F\u0670\u06D6-\u06DC\u06DE-\u06ED\u0640\u0653-\u0655]/.test(character))
         .map(character => ('ٱأإآ'.includes(character) ? 'ا' : character === '\u0649' ? 'ي' : character))
         .join('').split(/\s+/).filter(Boolean);
     for (const surah of surahs) {
@@ -123,10 +124,11 @@ test('the three surah cards number their ayahs as the sources do', () => {
             for (const [position, count] of surah.words.entries()) {
                 for (let step = 0; step < count; step++) {
                     assert.ok(tokens[cursor] !== undefined, `ayah ${position + 1} is short`);
-                    assert.equal(digits.includes(tokens[cursor]), false, 'a number sits inside ayah words');
+                    assert.equal(/[٠-٩\u06DD]/.test(tokens[cursor]), false, 'a number sits inside ayah words');
                     cursor++;
                 }
-                assert.equal(tokens[cursor], digits[position], `ayah ${position + 1} is not numbered in place`);
+                assert.equal(tokens[cursor], `\u06DD${digits[position]}`,
+                    `ayah ${position + 1} is not numbered in place`);
                 cursor++;
             }
             assert.equal(cursor, tokens.length, 'extra text after the last ayah number');
