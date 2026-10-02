@@ -45,6 +45,8 @@ Reading and playback:
 - Vibrate when counting (default: on, where supported).
 - Follow synchronized prayer text automatically (default: on).
 
+Headset, lock-screen and car-stereo buttons are handled through the Media Session API. Play, pause and the 10-second seeks map to the same controls as the on-screen transport, and the next and previous track buttons move to the adjacent card exactly as the arrows do: the position moves and the playing or paused state is kept. Whether those buttons reach the page at all depends on the platform — they are reliable on Android Chrome and usually available on desktop Chrome, while iOS Safari and some headsets expose only play and pause, or send a skip as a double-tap on the play button. Supporting a command is best-effort, not a guarantee.
+
 When opening:
 
 - Autoplay when opening (default: on).

@@ -343,3 +343,45 @@ test('car mode arrows move the card and honour the transport state', async ({ pa
     await expect(panel.locator('.prayer-previous')).toBeDisabled();
     await expect.poll(() => audio.evaluate(node => node.currentTime)).toBeLessThan(5);
 });
+
+test('media keys skip between cards and keep the transport state', async ({ page }) => {
+    // Capture the handlers the player registers, so a real headset press can be
+    // simulated without one attached.
+    await page.addInitScript(() => {
+        window.__mediaHandlers = {};
+        Object.defineProperty(navigator, 'mediaSession', {
+            configurable: true,
+            value: {
+                metadata: null, playbackState: 'none',
+                setActionHandler(action, handler) { window.__mediaHandlers[action] = handler; },
+            },
+        });
+    });
+    await seed(page, { autoplay: false, speed: 1 });
+    await page.goto('/?autoplay=morning');
+    await ready(page);
+
+    // The skip buttons a headset sends must be registered, not just the transport.
+    expect(await page.evaluate(() => Object.keys(window.__mediaHandlers).sort()))
+        .toEqual(['nexttrack', 'pause', 'play', 'previoustrack', 'seekbackward', 'seekforward', 'seekto']);
+
+    const panel = page.locator('.track.open');
+    const audio = panel.locator('audio');
+
+    // Paused in, paused out: a skip moves the card without starting playback.
+    await page.evaluate(() => window.__mediaHandlers.nexttrack());
+    await expect.poll(() => audio.evaluate(node => node.currentTime)).toBeGreaterThan(40);
+    expect(await audio.evaluate(node => node.paused)).toBeTruthy();
+
+    await page.evaluate(() => window.__mediaHandlers.previoustrack());
+    await expect.poll(() => audio.evaluate(node => node.currentTime)).toBeLessThan(5);
+    // Already at the first card, so it clamps rather than going negative.
+    expect(await audio.evaluate(node => node.currentTime)).toBeGreaterThanOrEqual(0);
+
+    // Playing in, still playing out.
+    await panel.locator('.play-pause-btn').click();
+    await expect.poll(() => audio.evaluate(node => !node.paused)).toBeTruthy();
+    await page.evaluate(() => window.__mediaHandlers.nexttrack());
+    await expect.poll(() => audio.evaluate(node => node.currentTime)).toBeGreaterThan(40);
+    await expect.poll(() => audio.evaluate(node => !node.paused)).toBeTruthy();
+});

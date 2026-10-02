@@ -100,6 +100,12 @@
             ...(state.artist ? { artist: state.artist } : {}),
             album: 'AthkarNFC'
         });
+        // The card index is read when the button is pressed, not when the handler
+        // is registered, so a headset always moves on from wherever the reader is.
+        const step = offset => () => {
+            const from = state.activePrayer ?? 0;
+            jumpToPrayer(state, from + offset);
+        };
         const handlers = {
             play: () => play(state), pause: () => state.audio.pause(),
             seekbackward: details => seekBy(state, -(details.seekOffset || 10)),
@@ -107,7 +113,11 @@
             seekto: details => {
                 const time = seekTime(0, details.seekTime, state.audio.duration);
                 if (time !== null) state.audio.currentTime = time;
-            }
+            },
+            // Bluetooth and lock-screen skip buttons move between cards, the same
+            // way the arrows do: the position moves, the transport state does not.
+            nexttrack: step(1),
+            previoustrack: step(-1)
         };
         for (const [action, handler] of Object.entries(handlers)) {
             try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) { /* Optional action. */ }
