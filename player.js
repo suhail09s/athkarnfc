@@ -200,8 +200,18 @@
         // selection stays authoritative while it animates, a quick second tap
         // moves on from the requested prayer instead of repeating the first.
         showPrayer(state, index);
-        if (!Number.isFinite(state.audio.duration) || state.audio.duration <= 0) state.audio.load();
-        else {
+        if (!Number.isFinite(state.audio.duration) || state.audio.duration <= 0) {
+            // The duration is not known yet, so a duration-based cue cannot be
+            // computed. A synchronized dataset carries its own start time, and
+            // that needs no duration; asking for metadata covers the rest. Some
+            // engines never fire loadedmetadata for a preload="none" element
+            // when no audio device is present, so the time is set directly as
+            // well: the browser queues it until the media is ready.
+            const segment = state.items[index]?.segments?.[0];
+            const target = Number.isFinite(segment?.start) ? segment.start : null;
+            if (target !== null) state.audio.currentTime = target;
+            else state.audio.load();
+        } else {
             updateCues(state);
             state.audio.currentTime = state.cues[index] || 0;
             state.pendingPrayer = null;
