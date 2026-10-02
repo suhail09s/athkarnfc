@@ -300,3 +300,46 @@ test('car mode keeps its own toolbar and is not docked', async ({ page }) => {
     expect(state.controlsPosition).not.toBe('fixed');
     expect(state.pageOverflow).toBeLessThanOrEqual(1);
 });
+
+test('car mode offers the same card navigation as the reader', async ({ page }) => {
+    await seed(page, { autoplay: false });
+    await page.goto('/car.html?autoplay=morning');
+    await ready(page);
+    const panel = page.locator('#morning');
+    const controls = panel.locator('.audio-controls');
+    // The arrows live inside the transport row, not in a strip of their own.
+    await expect(controls.locator('.prayer-previous')).toHaveCount(1);
+    await expect(controls.locator('.prayer-next')).toHaveCount(1);
+    await expect(panel.locator('.prayer-previous')).toHaveAttribute('aria-label', STRINGS.ar.previousPrayer);
+    await expect(panel.locator('.prayer-next')).toHaveAttribute('aria-label', STRINGS.ar.nextPrayer);
+
+    // They are real touch targets, sized with the controls beside them.
+    const boxes = await controls.locator('button').evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect();
+        return { width: Math.round(rect.width), height: Math.round(rect.height) };
+    }));
+    expect(boxes.length).toBe(6);
+    for (const box of boxes) expect(box.width).toBeGreaterThanOrEqual(40);
+});
+
+test('car mode arrows move the card and honour the transport state', async ({ page }) => {
+    await seed(page, { autoplay: false, speed: 1 });
+    await page.goto('/car.html?autoplay=morning');
+    await ready(page);
+    const panel = page.locator('#morning');
+    const audio = panel.locator('audio');
+
+    // The first card disables Previous and enables Next.
+    await expect(panel.locator('.prayer-previous')).toBeDisabled();
+    await expect(panel.locator('.prayer-next')).toBeEnabled();
+
+    await panel.locator('.prayer-next').click();
+    await expect(panel.locator('.prayer-previous')).toBeEnabled();
+    // Seeking moves to the second card without starting a paused recording.
+    await expect.poll(() => audio.evaluate(node => node.currentTime)).toBeGreaterThan(40);
+    expect(await audio.evaluate(node => node.paused)).toBeTruthy();
+
+    await panel.locator('.prayer-previous').click();
+    await expect(panel.locator('.prayer-previous')).toBeDisabled();
+    await expect.poll(() => audio.evaluate(node => node.currentTime)).toBeLessThan(5);
+});

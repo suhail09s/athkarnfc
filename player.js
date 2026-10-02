@@ -307,8 +307,11 @@
         }
         state.note.hidden = items.some(item => item.segments.length);
         state.sourceNote.hidden = !state.usedFallback;
-        if (!carMode) {
-            state.navigation?.remove();
+        // Card navigation exists in both modes. The reader pins it above the
+        // docked player; car mode puts the arrows in the transport row itself,
+        // where a driver can reach them without hunting for them.
+        state.navigation?.remove();
+        {
             const navigation = element('nav', 'prayer-navigation');
             navigation.setAttribute('aria-label', labels.prayerPages);
             navigation.dataset.i18nAria = 'prayerPages';
@@ -332,10 +335,14 @@
             previous.dataset.i18nTitle = 'previousPrayer';
             next.dataset.i18nTitle = 'nextPrayer';
             previous.type = next.type = 'button';
+            // In the reader the cards sit side by side, so the nearest one is the
+            // one whose right edge is closest to the container's. Car mode stacks
+            // them vertically, where the top edge is the axis that matters.
             function nearest() {
-                const edge = state.content.getBoundingClientRect().right;
+                const axis = carMode ? 'top' : 'right';
+                const edge = state.content.getBoundingClientRect()[axis];
                 return [...state.content.children].reduce((best, child, index, all) =>
-                    Math.abs(child.getBoundingClientRect().right - edge) < Math.abs(all[best].getBoundingClientRect().right - edge) ? index : best, 0);
+                    Math.abs(child.getBoundingClientRect()[axis] - edge) < Math.abs(all[best].getBoundingClientRect()[axis] - edge) ? index : best, 0);
             }
             function updateNavigation(index = nearest()) {
                 previous.disabled = index === 0;
@@ -361,8 +368,18 @@
             };
             navigation.append(previous, next);
             navigation.hidden = items.length < 2;
-            state.content.after(navigation);
-            state.navigation = navigation;
+            // The reader places the arrows between the text and the dock; car
+            // mode sets them into the transport row, so they sit with the
+            // controls rather than in a strip of their own.
+            if (carMode) {
+                const controls = state.panel.querySelector('.audio-controls');
+                controls?.prepend(previous);
+                controls?.append(next);
+                state.navigation = navigation;
+            } else {
+                state.content.after(navigation);
+                state.navigation = navigation;
+            }
             state.updateNavigation = updateNavigation;
             updateNavigation();
         }

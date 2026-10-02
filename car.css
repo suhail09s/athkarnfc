@@ -134,10 +134,62 @@ body {
     .exit-car-btn svg { width: 26px; height: 26px; }
     .prayer-text-container { padding-bottom: 16px; }
     .prayer-chunk { margin-bottom: 20px; padding: 14px; border-radius: 12px; }
-    .audio-controls { height: 88px; padding: 0 12px; margin-bottom: 10px; border-radius: 18px; }
-    .play-pause-btn { width: 64px; height: 64px; }
-    .play-pause-btn svg { width: 32px; height: 32px; }
+    /* Six controls share the transport row, so each one is sized to fit the
+       narrowest phone without the arrows spilling past the rounded edge. */
+    .car-content .audio-controls { height: 84px; padding: 0 8px; margin-bottom: 10px; border-radius: 18px; }
+    .car-content .audio-controls .skip-btn,
+    .car-content .audio-controls .speed-btn { width: 44px; height: 44px; font-size: 1rem; }
+    .car-content .audio-controls .play-pause-btn { width: 56px; height: 56px; }
+    .car-content .audio-controls .play-pause-btn svg { width: 28px; height: 28px; }
+    /* These must beat the base rule that sizes them from --hitbox. */
+    .car-content .audio-controls .prayer-previous.icon-button,
+    .car-content .audio-controls .prayer-next.icon-button { width: 42px; min-width: 42px; height: 42px; }
+    .car-content .audio-controls .prayer-previous svg,
+    .car-content .audio-controls .prayer-next svg { width: 24px; height: 24px; }
+
     .progress-bar-container { gap: 12px; padding: 0; }
     .time-readout { font-size: 1rem; }
 }
 
+
+/* Card navigation in car mode. The player sets the arrows into the transport row
+   itself, so they are styled where they actually live and match the round
+   controls beside them. The row now carries six controls, so it tightens its
+   spacing and lets the buttons shrink on a narrow screen instead of letting the
+   arrows spill past the rounded edge. */
+.car-content .prayer-navigation { margin: 0; padding: 0; }
+.car-content .audio-controls {
+    justify-content: space-evenly;
+    box-sizing: border-box;
+    max-width: 100%;
+    /* Six controls now share the row, so each one keeps its size and the row
+       distributes the remaining space rather than squeezing them together. */
+}
+.car-content .audio-controls > * { flex-shrink: 0; }
+.car-content .audio-controls .prayer-previous,
+.car-content .audio-controls .prayer-next {
+    width: var(--hitbox);
+    min-width: var(--hitbox);
+    height: var(--hitbox);
+    flex-shrink: 0;
+    padding: 0;
+    position: static;
+    background: rgba(255, 255, 255, 0.05);
+    border: none;
+    border-radius: 50%;
+    color: var(--text-main);
+    cursor: pointer;
+}
+.car-content .audio-controls .prayer-previous svg,
+.car-content .audio-controls .prayer-next svg { width: 32px; height: 32px; fill: currentColor; }
+.car-content .audio-controls .prayer-previous:disabled,
+.car-content .audio-controls .prayer-next:disabled { opacity: .3; cursor: default; }
+
+/* Only the narrowest phones cannot hold six controls in one row at a
+   comfortable touch size. There the arrows take a row of their own rather than
+   shrinking below a reliable target. */
+@media (max-width: 344px) {
+    .car-content .audio-controls { flex-wrap: wrap; row-gap: 8px; height: auto; min-height: 88px; padding: 8px; }
+    .car-content .audio-controls .prayer-previous,
+    .car-content .audio-controls .prayer-next { order: 1; }
+}
