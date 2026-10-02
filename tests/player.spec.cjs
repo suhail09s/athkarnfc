@@ -222,7 +222,8 @@ test('prayer navigation preserves counts and switching pauses the old recording'
     await morning.locator('.prayer-next').click();
     await expect(morning.locator('.prayer-previous')).toBeEnabled();
     await expect.poll(() => morning.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(30);
-    await expect.poll(() => morning.locator('audio').evaluate(audio => !audio.paused)).toBeTruthy();
+    // The arrow moves the position but must not start a paused recording.
+    expect(await morning.locator('audio').evaluate(audio => audio.paused)).toBeTruthy();
     await morning.locator('.prayer-previous').click();
     await expect(morning.locator('.prayer-previous')).toBeDisabled();
     await expect.poll(() => morning.locator('audio').evaluate(audio => audio.currentTime)).toBeLessThan(2);
@@ -243,6 +244,13 @@ test('timestamped evening prayer navigation seeks audio and playback follows the
     await evening.locator('.prayer-next').click();
     await expect.poll(() => evening.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(48);
     await expect.poll(() => evening.locator('audio').evaluate(audio => audio.currentTime)).toBeLessThan(62);
+    // Paused in, paused out: the arrow only moves the position.
+    expect(await evening.locator('audio').evaluate(audio => audio.paused)).toBeTruthy();
+    // Playing in, still playing out: an arrow carries playback along with it.
+    await evening.locator('.play-pause-btn').click();
+    await expect.poll(() => evening.locator('audio').evaluate(audio => !audio.paused)).toBeTruthy();
+    await evening.locator('.prayer-next').click();
+    await expect.poll(() => evening.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(60);
     await expect.poll(() => evening.locator('audio').evaluate(audio => !audio.paused)).toBeTruthy();
     await evening.locator('audio').evaluate(audio => { audio.currentTime = audio.duration * .75; });
     await expect.poll(() => evening.locator('.prayer-previous').isEnabled()).toBeTruthy();

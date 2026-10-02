@@ -242,3 +242,61 @@ test('the offline controls are reached through settings', async ({ page }) => {
     // The credit line was removed from the player.
     expect(await page.locator('.audio-source').count()).toBe(0);
 });
+
+test('the player and the cog form one docked bar in the reader', async ({ page }) => {
+    await seed(page, { autoplay: false });
+    await page.goto('/?autoplay=morning');
+    await ready(page);
+    const measured = await page.evaluate(() => {
+        const player = document.querySelector('.track.open .audio-player');
+        const nav = document.querySelector('.track.open .prayer-navigation');
+        const cog = document.querySelector('.settings-button');
+        const carousel = document.querySelector('.track.open .carousel');
+        const rect = node => node.getBoundingClientRect();
+        const overlaps = (a, b) => !(a.bottom <= b.top || a.top >= b.bottom || a.right <= b.left || a.left >= b.right);
+        return {
+            playerBottom: Math.round(rect(player).bottom),
+            viewport: window.innerHeight,
+            // The cog is a child of the transport row, not a separate strip.
+            cogInsidePlayer: player.contains(cog),
+            cogOverlapsTransport: overlaps(rect(cog), rect(document.querySelector('.track.open .next-btn'))),
+            // The reading area fills the space above the dock.
+            carouselBottom: Math.round(rect(carousel).bottom),
+            navTop: Math.round(rect(nav).top),
+            pageOverflow: document.documentElement.scrollHeight - window.innerHeight,
+            horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        };
+    });
+    // The dock is pinned to the foot of the screen.
+    expect(Math.abs(measured.playerBottom - measured.viewport)).toBeLessThanOrEqual(1);
+    expect(measured.cogInsidePlayer).toBe(true);
+    expect(measured.cogOverlapsTransport).toBe(false);
+    // Nothing is left to scroll: the card area ends where the arrows begin.
+    expect(measured.pageOverflow).toBeLessThanOrEqual(1);
+    expect(measured.horizontalOverflow).toBeLessThanOrEqual(1);
+    // The card area ends at the arrows, which paint their own surface over it,
+    // so it reaches that row rather than stopping short of the dock.
+    expect(measured.carouselBottom).toBeGreaterThan(measured.navTop - 40);
+});
+
+test('car mode keeps its own toolbar and is not docked', async ({ page }) => {
+    await seed(page, { autoplay: false });
+    await page.goto('/car.html?autoplay=morning');
+    await ready(page);
+    const state = await page.evaluate(() => {
+        const cog = document.querySelector('.settings-button');
+        const toolbar = document.querySelector('.settings-toolbar');
+        const controls = document.querySelector('#morning .audio-controls');
+        return {
+            inToolbar: !!cog.closest('.settings-toolbar'),
+            toolbarVisible: getComputedStyle(toolbar).display !== 'none',
+            controlsPosition: controls ? getComputedStyle(controls).position : null,
+            pageOverflow: document.documentElement.scrollHeight - window.innerHeight,
+        };
+    });
+    expect(state.inToolbar).toBe(true);
+    expect(state.toolbarVisible).toBe(true);
+    // The dock rules are scoped to the reader, so car mode keeps its layout.
+    expect(state.controlsPosition).not.toBe('fixed');
+    expect(state.pageOverflow).toBeLessThanOrEqual(1);
+});

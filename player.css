@@ -245,3 +245,84 @@ body:has(.container) { flex-direction: column; align-items: center; }
 .fallback-note { color: #ffd9a0; }
 /* Shown only when scripting is unavailable. */
 .noscript { padding: 16px; color: #ffb5b5; }
+
+/* --- Floating dock ---------------------------------------------------------
+   The player, the card arrows and the settings cog form one bar pinned to the
+   bottom of the viewport, so the reading area never has to be scrolled just to
+   reach the controls. The reader keeps a matching bottom padding so no text can
+   hide underneath the bar. */
+:root { --dock-height: 76px; }
+.track.open .audio-player {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    margin: 0;
+    border-radius: 0;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, .35);
+}
+/* The arrows ride in the dock too, in a row above the transport controls, which
+   frees the whole strip they used to occupy. */
+.track.open .prayer-navigation {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--dock-height);
+    z-index: 30;
+    margin: 0;
+    padding: 6px 16px;
+    justify-content: space-between;
+    pointer-events: none;
+    /* The arrows belong to the dock, so they get its surface rather than
+       floating over the end of the prayer text. */
+    background: #1a1a24;
+    border-top: 1px solid rgba(255, 255, 255, .06);
+}
+.track.open .prayer-navigation .icon-button { pointer-events: auto; }
+/* The cog is moved into the transport row by the player, so it only needs to be
+   hidden while it is still waiting in the top bar. */
+body:has(.track.open) .settings-toolbar { display: none; }
+.track.open .audio-player .settings-button { flex-shrink: 0; }
+/* Room for the dock, so the end of a card is never hidden behind it. */
+.track.open .track-content { padding-bottom: calc(var(--dock-height) + 22px); }
+
+/* The open track is a column: its header stays at the top and the card area
+   grows to fill everything above the dock, so the leftover space the fixed
+   bar used to leave behind is handed to the prayer text instead of sitting
+   empty at the bottom of the page. */
+/* The card stops above the dock rather than at the foot of the viewport, so the
+   column has a definite height for the prayer area to grow into. */
+/* The card carries a backdrop-filter, which makes it the containing block for
+   the fixed dock inside it. Giving it the full viewport height therefore puts
+   the dock at the true bottom of the screen, and the reading area above it
+   scrolls within the space that is left. */
+.container.focus-mode .card { min-height: 0; height: 100dvh; }
+body:has(.track.open) .card { display: flex; flex-direction: column; }
+body:has(.track.open) .container,
+body:has(.track.open) .tracks { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.track.open { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.track.open .track-content { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.track.open .carousel { flex: 1; height: auto; min-height: 180px; }
+.track.open .slide { height: 100%; }
+
+/* The status line sits under the transport row, inside the dock, so it is never
+   overlapped by the arrows that ride above it. */
+.track.open .dock-status {
+    position: fixed;
+    left: 0;
+    right: 0;
+    /* Below the transport controls, in the padding the player reserves for it. */
+    bottom: 0;
+    z-index: 29;
+    padding: 0 16px 8px;
+    text-align: center;
+    pointer-events: none;
+}
+.track.open .dock-status .player-status { margin: 0; font-size: 13px; }
+.track.open .audio-player { padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)); }
+
+/* Light theme keeps the dock surfaces consistent with the rest of the reader. */
+[data-theme="light"] .track.open .prayer-navigation { background: #f4f5fa; border-top-color: #e2e4ee; }
+[data-theme="light"] .track.open .audio-player { box-shadow: 0 -6px 24px rgba(20, 20, 50, .1); }

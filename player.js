@@ -131,6 +131,9 @@
             document.getElementById('appContainer').classList.toggle('focus-mode', Boolean(state));
             document.body.classList.toggle('focus-active', Boolean(state));
             storage.set('athkarnfc_last_opened', state ? String(state.index) : null);
+            // The cog follows whichever track is open, and returns to the top bar
+            // when the reader closes every track.
+            placeSettingsButton();
         }
         if (state) {
             storage.set('athkarnfc_last_track', state.id);
@@ -177,6 +180,10 @@
     async function jumpToPrayer(state, index) {
         if (!state.items?.length) return;
         index = Math.max(0, Math.min(state.items.length - 1, index));
+        // Tapping an arrow while paused moves the reader to another card without
+        // starting playback: the position moves, the transport state does not.
+        // Playback is only carried over when the recording was already running.
+        const wasPlaying = !state.audio.paused && !state.audio.ended;
         select(state);
         state.pendingPrayer = index;
         // The card is selected first and the scroll catches up. Because the
@@ -189,7 +196,7 @@
             state.audio.currentTime = state.cues[index] || 0;
             state.pendingPrayer = null;
         }
-        await play(state);
+        if (wasPlaying) await play(state);
     }
     function updatePlayer(state) {
         const { audio, panel, seek } = state;
@@ -436,7 +443,15 @@
         state.offlineActions = element('div', 'offline-actions');
         state.offlineActions.append(state.offline, state.offlineStatus);
         const host = carMode ? panel : panel.querySelector('.track-content');
-        host.append(state.status);
+        if (carMode) host.append(state.status);
+        else {
+            // In the reader the status belongs to the dock, under the transport
+            // row, where it cannot collide with the arrows above it.
+            const dockStatus = element('div', 'dock-status');
+            dockStatus.append(state.status);
+            state.dockStatus = dockStatus;
+            panel.querySelector('.audio-player').after(dockStatus);
+        }
         audio.preload = 'none';
         applyRate(audio);
         state.speedButton.textContent = `${speed}x`;
@@ -533,6 +548,15 @@
     settingsButton.innerHTML = gearIcon;
     toolbar.append(settingsButton);
     document.body.prepend(toolbar);
+    // In the reader the cog belongs to the open track's transport row, so it is
+    // moved there once that row exists rather than floating in a strip of its
+    // own. Car mode keeps the toolbar where it is.
+    function placeSettingsButton() {
+        if (carMode) return;
+        const openPlayer = document.querySelector('.track.open .audio-player');
+        if (openPlayer) openPlayer.append(settingsButton);
+        else toolbar.append(settingsButton);
+    }
     const dialog = element('dialog', 'settings-dialog');
     dialog.setAttribute('aria-labelledby', 'settings-title');
     const heading = element('h2', '', labels.settings);
