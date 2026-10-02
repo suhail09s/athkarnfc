@@ -36,11 +36,30 @@
     });
     const playIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
     const pauseIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+    // Chevron arrows for card navigation. Each button gets its own glyph rather
+    // than a mirrored copy, so the direction is explicit: `back` points towards
+    // the start of the reading order and `forward` towards its end.
+    const chevronBack = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>';
+    const chevronForward = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8.6 7.4 10 6l6 6-6 6-1.4-1.4L13.2 12z"/></svg>';
+    const gearIcon = '<svg aria-hidden="true" viewBox="0 0 24 24">'
+        + '<path fill-rule="evenodd" d="M10.6 2h2.8l.5 2.3 1.7.7 2-1.2 2 2-1.2 2 .7 1.7 2.3.5v2.8l-2.3.5-.7 1.7 1.2 2-2 2-2-1.2-1.7.7-.5 2.3h-2.8l-.5-2.3-1.7-.7-2 1.2-2-2 1.2-2-.7-1.7L2 13.4v-2.8l2.3-.5.7-1.7-1.2-2 2-2 2 1.2 1.7-.7z"/>'
+        + '<circle cx="12" cy="12" r="3.1" class="gear-hub"/>'
+        + '</svg>';
+    const downloadIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v8.6l2.8-2.8 1.4 1.4-5.2 5.2-5.2-5.2 1.4-1.4L11 12.6V4a1 1 0 0 1 1-1zM5 18h14v2H5z"/></svg>';
+    const trashIcon = '<svg aria-hidden="true" viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4zM6 8h12l-.8 12.1a2 2 0 0 1-2 1.9H8.8a2 2 0 0 1-2-1.9z"/></svg>';
     function element(tag, className, text) {
         const el = document.createElement(tag);
         if (className) el.className = className;
         if (text !== undefined) el.textContent = text;
         return el;
+    }
+    // Splits a segment into text nodes so the end-of-ayah sign stays glued to the
+    // word before it. The concatenated text is byte-for-byte the stored text; a
+    // non-breaking space is added only where a number would otherwise be able to
+    // start a line on its own.
+    function segmentText(text) {
+        return String(text).split(/(?= \u06DD)/).map((part, index) =>
+            index === 0 ? part : `\u00A0${part.slice(1)}`);
     }
     // The key is remembered so a language change can re-apply the current
     // status without knowing why it was set.
@@ -226,7 +245,11 @@
                 const ayah = element('div', 'prayer-ayah');
                 let ayahStarted = false;
                 for (const segment of item.segments) {
-                    const span = element('span', 'sync-span', segment.text);
+                    const span = element('span', 'sync-span');
+                    // The end-of-ayah sign is wrapped with the word it follows so a
+                    // narrow screen cannot push the bare number onto its own line.
+                    // The text itself is unchanged, only the break opportunity.
+                    span.append(...segmentText(segment.text));
                     span.dataset.start = segment.start;
                     span.dataset.end = segment.end;
                     if (segment.opening) {
@@ -282,10 +305,25 @@
             const navigation = element('nav', 'prayer-navigation');
             navigation.setAttribute('aria-label', labels.prayerPages);
             navigation.dataset.i18nAria = 'prayerPages';
-            const previous = element('button', 'prayer-previous', labels.previousPrayer);
-            const next = element('button', 'prayer-next', labels.nextPrayer);
-            previous.dataset.i18n = 'previousPrayer';
-            next.dataset.i18n = 'nextPrayer';
+            const previous = element('button', 'prayer-previous icon-button');
+            const next = element('button', 'prayer-next icon-button');
+            // Icon-only buttons need a text alternative, since the arrow itself
+            // carries no accessible name.
+            previous.setAttribute('aria-label', labels.previousPrayer);
+            next.setAttribute('aria-label', labels.nextPrayer);
+            previous.title = labels.previousPrayer;
+            next.title = labels.nextPrayer;
+            // The glyphs are swapped by CSS for the writing direction, so the
+            // same two icons always point away from each other and towards the
+            // card the button actually opens.
+            previous.innerHTML = chevronBack;
+            next.innerHTML = chevronForward;
+            previous.classList.add('arrow-back');
+            next.classList.add('arrow-forward');
+            previous.dataset.i18nAria = 'previousPrayer';
+            next.dataset.i18nAria = 'nextPrayer';
+            previous.dataset.i18nTitle = 'previousPrayer';
+            next.dataset.i18nTitle = 'nextPrayer';
             previous.type = next.type = 'button';
             function nearest() {
                 const edge = state.content.getBoundingClientRect().right;
@@ -354,7 +392,12 @@
     let offlineWorker = null;
     // Re-applied on a language change, and after a save or removal.
     function updateOfflineText(state) {
-        state.offline.textContent = state.saved ? labels.remove : labels.save;
+        // Icon-only: the accessible name and tooltip carry the meaning, and the
+        // glyph itself changes between saving and removing.
+        const label = state.saved ? labels.remove : labels.save;
+        state.offline.setAttribute('aria-label', label);
+        state.offline.title = label;
+        state.offline.innerHTML = state.saved ? trashIcon : downloadIcon;
         state.offlineStatus.textContent = state.saved ? labels.saved : '';
     }
     async function refreshOffline() {
@@ -380,23 +423,20 @@
         state.sourceNote.dataset.i18n = 'fallback';
         state.sourceNote.hidden = true;
         state.content.before(state.sourceNote, state.note);
-        const actions = element('div', 'offline-actions');
-        state.offline = element('button', 'offline-button', labels.save);
+        // The offline control lives in the settings dialog so the player stays
+        // compact on a phone. It is built here, where the per-track state is
+        // known, and appended to the dialog further down.
+        state.offline = element('button', 'offline-button icon-button');
         state.saved = false;
         state.offline.type = 'button';
         state.offline.disabled = true;
+        state.offline.innerHTML = downloadIcon;
         state.offlineStatus = element('span', 'offline-status');
         state.offlineStatus.setAttribute('role', 'status');
-        actions.append(state.offline, state.offlineStatus);
+        state.offlineActions = element('div', 'offline-actions');
+        state.offlineActions.append(state.offline, state.offlineStatus);
         const host = carMode ? panel : panel.querySelector('.track-content');
-        host.append(state.status, actions);
-        if (state.source) {
-            state.credit = element('a', 'audio-source');
-            state.credit.href = state.source;
-            state.credit.target = '_blank'; state.credit.rel = 'noopener noreferrer';
-            updateCredit(state);
-            host.append(state.credit);
-        }
+        host.append(state.status);
         audio.preload = 'none';
         applyRate(audio);
         state.speedButton.textContent = `${speed}x`;
@@ -482,10 +522,15 @@
         ] }
     ];
     const toolbar = element('div', 'settings-toolbar');
-    const settingsButton = element('button', 'settings-button', labels.settings);
+    const settingsButton = element('button', 'settings-button icon-button');
     settingsButton.type = 'button';
-    settingsButton.dataset.i18n = 'settings';
+    settingsButton.dataset.i18nAria = 'settings';
+    settingsButton.dataset.i18nTitle = 'settings';
     settingsButton.setAttribute('aria-haspopup', 'dialog');
+    // The gear is the only visible cue, so the name comes from aria-label.
+    settingsButton.setAttribute('aria-label', labels.settings);
+    settingsButton.title = labels.settings;
+    settingsButton.innerHTML = gearIcon;
     toolbar.append(settingsButton);
     document.body.prepend(toolbar);
     const dialog = element('dialog', 'settings-dialog');
@@ -528,6 +573,21 @@
         dialog.append(groupHeading);
         group.rows.forEach(addRow);
     }
+    // Offline saving for each recitation, kept beside the settings so the
+    // player itself does not have to carry the buttons on a phone.
+    const offlineHeading = element('h3', 'settings-group', labels.offlineHeading);
+    offlineHeading.dataset.i18n = 'offlineHeading';
+    dialog.append(offlineHeading);
+    for (const state of states) {
+        const row = element('div', 'offline-row');
+        row.dataset.track = state.id;
+        // The download itself is the button; the label names the recitation so
+        // the three identical icons stay distinguishable in the dialog.
+        const name = element('span', 'offline-name', state.title);
+        name.dataset.i18n = `${state.id}Meta`;
+        row.append(name, state.offlineActions);
+        dialog.append(row);
+    }
     const resetButton = element('button', 'settings-reset', labels.settingsReset);
     resetButton.type = 'button';
     resetButton.dataset.i18n = 'settingsReset';
@@ -568,6 +628,8 @@
         document.title = carMode ? labels.carPageTitle : labels.appTitle;
         for (const node of document.querySelectorAll('[data-i18n]')) node.textContent = labels[node.dataset.i18n];
         for (const node of document.querySelectorAll('[data-i18n-aria]')) node.setAttribute('aria-label', labels[node.dataset.i18nAria]);
+        // Icon-only buttons also carry a tooltip, so it needs translating too.
+        for (const node of document.querySelectorAll('[data-i18n-title]')) node.title = labels[node.dataset.i18nTitle];
     }
     function applyAppearance() {
         const root = document.documentElement;
@@ -587,11 +649,6 @@
         const time = `${String(preferences.switchHour).padStart(2, '0')}:00`;
         scheduleHint.textContent = formatText(labels.settingsSchedule, { time });
     }
-    function updateCredit(state) {
-        if (!state.credit) return;
-        const artist = preferences.language === 'ar' ? (state.artistAr || state.artist) : state.artist;
-        state.credit.textContent = formatText(labels.audioCredit, { artist });
-    }
     function refreshOfflineText(state) {
         if (!offlineWorker) { state.offlineStatus.textContent = labels.unavailable; return; }
         updateOfflineText(state);
@@ -600,7 +657,6 @@
         status(state, state.statusKey || 'ready', state.statusError);
         state.countUpdaters?.forEach(update => update());
         refreshOfflineText(state);
-        updateCredit(state);
         updatePlayer(state);
     }
     function applyPreferences() {

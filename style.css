@@ -193,3 +193,32 @@ body.focus-active { padding: 0; }
 .sync-span { transition: color 0.2s ease, text-shadow 0.2s ease; }
 .sync-span.active-sync { color: var(--accent-2); text-shadow: 0 0 12px var(--accent-soft); font-weight: bold; }
 
+/* Phone density. The reader is a single column of chrome above the prayer text,
+   so on a small screen the page margin, the card padding and the header are all
+   trimmed to keep the player and the text within one screen. */
+@media (max-width: 480px) {
+    body { padding: 8px; }
+    .card { border-radius: 18px; padding: 14px 12px 16px; }
+    .header { margin-bottom: 14px; }
+    .header-icon { width: 44px; height: 44px; border-radius: 14px; margin-bottom: 8px; }
+    .header-icon svg { width: 22px; height: 22px; }
+    .header h1 { font-size: 19px; margin-bottom: 4px; }
+    .header p { font-size: 13px; margin-bottom: 10px; }
+    .car-mode-link { padding: 7px 14px; font-size: 13px; }
+    .tracks { gap: 10px; }
+    .track-btn { padding: 12px 14px; gap: 12px; }
+    .track-number { width: 32px; height: 32px; border-radius: 10px; }
+    .track-content { padding: 0 12px; }
+    .track.open .track-content { padding: 0 12px 12px; }
+    /* The sticky header repeats the track name, so on a phone it only needs to
+       stay tappable, not to be a full-width bar. */
+    .container.focus-mode .track-btn { padding: 12px 14px; }
+    /* Focus mode sizes the card to the full viewport, but the settings toolbar
+       sits above it. Without this the page always scrolls by exactly the height
+       of that toolbar, however tall the screen is. */
+    .container.focus-mode .card { min-height: calc(100dvh - 48px); }
+    /* The prayer text gets the height that the chrome above it gave back. The
+       carousel height itself is set in player.css, which is loaded last. */
+    .slide { padding: 14px; }
+}
+

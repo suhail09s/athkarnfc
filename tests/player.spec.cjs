@@ -55,9 +55,13 @@ for (const mode of ['normal', 'car']) {
     test(`${mode}: save audio, reload offline with NFC parameters, seek and remove`, async ({ page, context, browserName, offlineOrigin }) => {
         await page.goto(offlineOrigin.url + (mode === 'car' ? '/car.html?autoplay=travel' : '/?autoplay=travel'));
         const panel = page.locator(mode === 'car' ? '#travel' : '.track[data-track="0"]');
-        await expect(panel.locator('.offline-button')).toBeEnabled();
-        await panel.locator('.offline-button').click();
-        await expect(panel.locator('.offline-status')).toHaveText(STRINGS.ar.saved);
+        // Offline saving lives in the settings dialog, one row per recitation.
+        const offline = page.locator('.offline-row[data-track="travel"]');
+        await page.locator('.settings-button').click();
+        await expect(offline.locator('.offline-button')).toBeEnabled();
+        await offline.locator('.offline-button').click();
+        await expect(offline.locator('.offline-status')).toHaveText(STRINGS.ar.saved);
+        await page.keyboard.press('Escape');
         await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBeTruthy();
         // Stop the actual origin in both engines. WebKit's offline emulation
         // rejects even cached service-worker responses on macOS; shutting down
@@ -78,9 +82,11 @@ for (const mode of ['normal', 'car']) {
         await expect.poll(() => panel.locator('audio').evaluate(audio => !audio.paused && audio.currentTime > 0)).toBeTruthy();
         await panel.locator('audio').evaluate(audio => { audio.currentTime = 30; });
         await expect.poll(() => panel.locator('audio').evaluate(audio => audio.currentTime)).toBeGreaterThan(30);
-        await expect(panel.locator('.offline-button')).toBeEnabled();
-        await panel.locator('.offline-button').click();
-        await expect(panel.locator('.offline-button')).toHaveText(STRINGS.ar.save);
+        await page.locator('.settings-button').click();
+        await expect(offline.locator('.offline-button')).toBeEnabled();
+        await offline.locator('.offline-button').click();
+        // The button is icon-only now, so its accessible name carries the state.
+        await expect(offline.locator('.offline-button')).toHaveAttribute('aria-label', STRINGS.ar.save);
     });
 }
 
@@ -245,8 +251,9 @@ test('timestamped evening prayer navigation seeks audio and playback follows the
 
 test('worker rejects unknown audio paths and still saves allowed recordings', async ({ page }) => {
     await page.goto('/?autoplay=travel');
-    const panel = page.locator('.track[data-track="0"]');
-    await expect(panel.locator('.offline-button')).toBeEnabled();
+    const offline = page.locator('.offline-row[data-track="travel"]');
+    await page.locator('.settings-button').click();
+    await expect(offline.locator('.offline-button')).toBeEnabled();
     // Send an invalid path through the same worker API; it must never be cached.
     const result = await page.evaluate(async () => {
         const registration = await navigator.serviceWorker.ready;
@@ -257,6 +264,6 @@ test('worker rejects unknown audio paths and still saves allowed recordings', as
         });
     });
     expect(result.ok).toBe(false);
-    await panel.locator('.offline-button').click();
-    await expect(panel.locator('.offline-status')).toHaveText(STRINGS.ar.saved);
+    await offline.locator('.offline-button').click();
+    await expect(offline.locator('.offline-status')).toHaveText(STRINGS.ar.saved);
 });

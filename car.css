@@ -124,3 +124,20 @@ body {
 .sync-span { transition: color 0.2s ease, text-shadow 0.2s ease; }
 .sync-span.active-sync { color: var(--accent-2); text-shadow: 0 0 12px var(--accent-soft); font-weight: bold; }
 
+/* Phone density. A phone in car mode still has to fit the tabs, the prayer text
+   and the transport controls without overlapping, so the wide-screen padding and
+   the large gaps are trimmed while every control keeps a full hit area. */
+@media (max-width: 480px) {
+    :root { --hitbox: 64px; }
+    .tab-panel { padding: 10px; }
+    .tab-btn { font-size: 1.05rem; }
+    .exit-car-btn svg { width: 26px; height: 26px; }
+    .prayer-text-container { padding-bottom: 16px; }
+    .prayer-chunk { margin-bottom: 20px; padding: 14px; border-radius: 12px; }
+    .audio-controls { height: 88px; padding: 0 12px; margin-bottom: 10px; border-radius: 18px; }
+    .play-pause-btn { width: 64px; height: 64px; }
+    .play-pause-btn svg { width: 32px; height: 32px; }
+    .progress-bar-container { gap: 12px; padding: 0; }
+    .time-readout { font-size: 1rem; }
+}
+

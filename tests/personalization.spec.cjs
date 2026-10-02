@@ -19,8 +19,10 @@ test('Arabic is the default interface in both modes', async ({ page }) => {
         await ready(page);
         expect(await page.evaluate(() => [document.documentElement.lang, document.documentElement.dir]))
             .toEqual(['ar', 'rtl']);
-        await expect(page.locator('.settings-button')).toHaveText(STRINGS.ar.settings);
-        await expect(page.locator('.offline-button').first()).toHaveText(STRINGS.ar.save);
+        // These controls are icon-only, so their accessible name carries the
+        // translation rather than their (empty) text.
+        await expect(page.locator('.settings-button')).toHaveAttribute('aria-label', STRINGS.ar.settings);
+        await expect(page.locator('.offline-button').first()).toHaveAttribute('aria-label', STRINGS.ar.save);
         await expect(page.locator('.player-status').first()).toHaveText(STRINGS.ar.ready);
         if (url === '/?autoplay=travel') {
             // The meta line only exists to translate the Arabic title.
@@ -44,19 +46,19 @@ test('switching language translates the interface and is stored', async ({ page 
     await expect(page.locator('.settings-close')).toHaveText(STRINGS.en.settingsClose);
     await expect(page.locator('#preference-startup')).toBeVisible();
     await page.locator('.settings-close').click();
-    await expect(page.locator('.settings-button')).toHaveText(STRINGS.en.settings);
+    await expect(page.locator('.settings-button')).toHaveAttribute('aria-label', STRINGS.en.settings);
     await expect(page.locator('.track-meta').first()).toBeVisible();
-    await expect(page.locator('.offline-button').first()).toHaveText(STRINGS.en.save);
+    await expect(page.locator('.offline-button').first()).toHaveAttribute('aria-label', STRINGS.en.save);
 
     // The choice survives a reload, and can be switched back.
     await page.reload();
     await ready(page);
     expect(await page.evaluate(() => document.documentElement.lang)).toBe('en');
-    await expect(page.locator('.settings-button')).toHaveText(STRINGS.en.settings);
+    await expect(page.locator('.settings-button')).toHaveAttribute('aria-label', STRINGS.en.settings);
     await page.locator('.settings-button').click();
     await page.locator('#preference-language').selectOption('ar');
     await page.locator('.settings-close').click();
-    await expect(page.locator('.settings-button')).toHaveText(STRINGS.ar.settings);
+    await expect(page.locator('.settings-button')).toHaveAttribute('aria-label', STRINGS.ar.settings);
     expect(await page.evaluate(() => document.documentElement.dir)).toBe('rtl');
 });
 
@@ -193,4 +195,50 @@ test('the reset button restores and stores the defaults', async ({ page }) => {
     await expect(page.locator('#preference-startup')).toHaveValue('auto');
     expect(await page.evaluate(() => [document.documentElement.lang, document.documentElement.dataset.theme]))
         .toEqual(['ar', 'dark']);
+});
+
+test('the player chrome is icon-only and stays out of the reading area', async ({ page }) => {
+    await seed(page, { autoplay: false });
+    await page.goto('/?autoplay=morning');
+    await ready(page);
+    const panel = page.locator('.track[data-track="1"]');
+
+    // Settings and card navigation are symbols, not words. The name lives in the
+    // accessible label, so the visible button carries no text at all.
+    await expect(page.locator('.settings-button')).toBeVisible();
+    expect((await page.locator('.settings-button').textContent()).trim()).toBe('');
+    await expect(page.locator('.settings-button svg')).toHaveCount(1);
+
+    const previous = panel.locator('.prayer-previous');
+    const next = panel.locator('.prayer-next');
+    expect((await previous.textContent()).trim()).toBe('');
+    expect((await next.textContent()).trim()).toBe('');
+    await expect(previous).toHaveAttribute('aria-label', STRINGS.ar.previousPrayer);
+    await expect(next).toHaveAttribute('aria-label', STRINGS.ar.nextPrayer);
+
+    // The two arrows must point apart. Each button renders its own glyph, so the
+    // path data itself has to differ.
+    const paths = await panel.locator('.prayer-navigation svg path').evaluateAll(nodes =>
+        nodes.map(node => node.getAttribute('d')));
+    expect(paths).toHaveLength(2);
+    expect(paths[0]).not.toBe(paths[1]);
+});
+
+test('the offline controls are reached through settings', async ({ page }) => {
+    await seed(page, { autoplay: false });
+    await page.goto('/?autoplay=morning');
+    await ready(page);
+    // Nothing to download inside the player itself any more.
+    await expect(page.locator('.track.open .offline-button')).toHaveCount(0);
+
+    await page.locator('.settings-button').click();
+    const rows = page.locator('.offline-row');
+    await expect(rows).toHaveCount(3);
+    // One row per recitation, each labelled so the identical icons differ.
+    await expect(page.locator('.offline-row[data-track="morning"] .offline-name'))
+        .toHaveText(STRINGS.ar.morningMeta);
+    await expect(page.locator('.offline-row[data-track="morning"] .offline-button'))
+        .toHaveAttribute('aria-label', STRINGS.ar.save);
+    // The credit line was removed from the player.
+    expect(await page.locator('.audio-source').count()).toBe(0);
 });

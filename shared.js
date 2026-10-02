@@ -117,6 +117,7 @@
             forward10: 'تقديم ١٠ ثوانٍ',
             playbackPosition: 'موضع التشغيل',
             playbackSpeed: 'سرعة التشغيل',
+            offlineHeading: 'الاستماع دون اتصال',
             audioCredit: 'مصدر التسجيل: IslamHouse — {artist}'
         },
         en: {
@@ -195,6 +196,7 @@
             forward10: 'Forward 10 seconds',
             playbackPosition: 'Playback position',
             playbackSpeed: 'Playback speed',
+            offlineHeading: 'Listen offline',
             audioCredit: 'Audio: {artist} · IslamHouse'
         }
     };
